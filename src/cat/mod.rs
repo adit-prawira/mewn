@@ -143,9 +143,7 @@ impl Cat {
 
             if event::poll(Duration::from_millis(50)).expect("poll failed") 
                 &&  let Ok(Event::Key(_)) = event::read() {
-                terminal.draw(|f| {
-                    Self::render(f, f.area(), 0);
-                });
+                    break;
             }
         }
 
