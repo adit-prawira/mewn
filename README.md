@@ -1,7 +1,7 @@
 # Mewn
 
 A terminal-based network monitor with a cute cat mascot.
-<img width="984" height="712" alt="mewn" src="https://github.com/user-attachments/assets/bf58fbff-e92f-4a60-b717-b936a4ad19da" />
+<img width="984" height="712" alt="mewn" src="https://github.com/user-attachments/assets/6e71c124-0b62-4b8e-b7bc-d7eb8dd38620" />
 
 ## Features
 
