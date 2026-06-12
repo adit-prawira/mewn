@@ -1,6 +1,5 @@
 use std::time::{Duration, Instant};
 
-use crossterm::event::{self, Event};
 use ratatui::Frame;
 use ratatui::layout::{Alignment, Rect};
 use ratatui::style::{Color, Style};
@@ -9,7 +8,18 @@ use ratatui::widgets::Paragraph;
 
 use crate::terminal::Terminal;
 
-pub struct Cat;
+struct BlinkConfig {
+    start: Instant,
+    duration: Duration
+}
+struct AnimationConfig {
+    start: Instant,
+    blink_config: BlinkConfig
+}
+
+pub struct Cat {
+   animation_config: AnimationConfig 
+}
 
 const CAT_ASCII_ART_EYES_OPENED: &[&str] = &[
     "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡀⠤⠄⠀⠀⠀⠂⠀⠀⠤⠄⠀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀",
@@ -131,34 +141,49 @@ const CAT_ASCII_ART_EYES_CLOSED: &[&str] = &[
     "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠀⠀⠀⠒⠒⠒⠂⠀⠈⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀",
 ];
 
-impl Cat {
-    pub fn animate(terminal: &mut Terminal, duration: Duration, interval: Duration) {
-        let start = Instant::now(); 
-        while start.elapsed() < duration {
-            let state = (start.elapsed().as_millis() / interval.as_millis()) as usize;
-
-            terminal.draw(|f| {
-                Cat::render(f, f.area(), state); 
-            });
-
-            if event::poll(Duration::from_millis(50)).expect("poll failed") 
-                &&  let Ok(Event::Key(_)) = event::read() {
-                    break;
+impl Default for Cat {
+    fn default() -> Self {
+        Self {
+            animation_config: AnimationConfig { 
+                start: Instant::now(), 
+                blink_config: BlinkConfig { 
+                    start: Instant::now(), 
+                    duration: Duration::from_millis(600)
+                }
             }
         }
+    }
+}
+impl Cat { 
+    pub fn animate(&mut self, terminal: &mut Terminal) {
+        let now = Instant::now();
+        let elapsed = self.animation_config.start.elapsed();
+        let blinking_animation_end = self.animation_config.blink_config.start + self.animation_config.blink_config.duration;
+        let is_blinking = now >= self.animation_config.blink_config.start && now < blinking_animation_end;
 
+        if !is_blinking && now >= blinking_animation_end {
+            self.animation_config.blink_config.start = now + Duration::from_secs(5);
+        }
+
+        let blink_index = if is_blinking {
+            ((now - self.animation_config.blink_config.start).as_millis() / 150) as usize % 4
+        } else {
+            0
+        };
+     
+        let y_offset = Self::float_offset(elapsed); 
         terminal.draw(|f| {
-            Cat::render(f, f.area(), 0);
+            Self::render(f, f.area(), blink_index, y_offset);
         });
     }
-
-    fn render(frame: &mut Frame, area: Rect, blink_index: usize) {
-        let lines: Vec<Line> = Self::frame(blink_index); 
+                                
+    fn render(frame: &mut Frame, area: Rect, blink_index: usize, float_offset: usize) {
+        let lines: Vec<Line> = Self::frame(blink_index, float_offset); 
         let paragraph = Paragraph::new(lines).alignment(Alignment::Center);
         frame.render_widget(paragraph, area);
     }
 
-    fn frame(blink_index: usize) -> Vec<Line<'static>> {
+    fn frame(blink_index: usize, float_offset: usize) -> Vec<Line<'static>> {
         let art = match blink_index % 4 {
             0 => CAT_ASCII_ART_EYES_OPENED,
             1 => CAT_ASCII_ART_EYES_HALF_CLOSED,
@@ -166,11 +191,26 @@ impl Cat {
             _ => CAT_ASCII_ART_EYES_CLOSED
         };
 
-        art.iter()
+        let paddings = (0..float_offset)
+            .map(|_| Line::from("")); 
+
+        let art_lines: Vec<Line> = art.iter()
             .map(|&row| {
                 let style = Style::default().fg(Color::Rgb(203, 166, 247));
                 let span = Span::styled(row, style);
                 Line::from(span)
-            }).collect()
+            }).collect();
+       
+        paddings.chain(art_lines).collect()
+    }
+
+    fn float_offset(elapsed: Duration) -> usize {
+        let cycle = (elapsed.as_millis() / 200) % 4;
+        match cycle {
+            0 => 0,
+            1 => 1,
+            2 => 2,
+            _ => 1
+        }
     }
 }
