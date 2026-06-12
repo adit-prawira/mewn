@@ -2,7 +2,7 @@ use std::io::stdout;
 use std::ops::Drop;
 
 use crossterm::execute;
-use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode};
+use crossterm::terminal::{Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode};
 use ratatui::{Frame, Terminal as RatatuiTerminal};
 use ratatui::prelude::CrosstermBackend;
 
@@ -28,6 +28,10 @@ impl Terminal {
 
     pub fn draw<F>(&mut self, f: F) where F: FnOnce(&mut Frame) {
         self.inner.draw(f).expect("failed to draw");
+    }
+
+    pub fn clear_screen(&mut self) -> std::io::Result<()> {
+        execute!(self.inner.backend_mut(), Clear(ClearType::All))
     }
 }
 

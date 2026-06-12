@@ -154,7 +154,11 @@ impl Default for Cat {
         }
     }
 }
-impl Cat { 
+impl Cat {
+    pub fn is_complete(&self) -> bool {
+        self.animation_config.start.elapsed() >= Duration::from_secs(2)
+    }
+
     pub fn animate(&mut self, terminal: &mut Terminal) {
         let now = Instant::now();
         let elapsed = self.animation_config.start.elapsed();
