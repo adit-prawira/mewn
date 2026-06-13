@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use crossterm::event::{self, Event, KeyCode};
+use mewn::bandwidth::store::BandwidthStore;
 use mewn::cat::Cat;
 use mewn::connections::store::ConnectionStore;
 use mewn::dashboard::Dashboard;
@@ -12,10 +13,14 @@ async fn main() {
     let mut cat = Cat::default();
 
     let connection_store = ConnectionStore::default();
+    let bandwidth_store = BandwidthStore::default();
+
     let shared_connections = connection_store.watch().await;
-    
+    let shared_bandwidth_statistics = bandwidth_store.watch().await;
+
     let mut dashboard = Dashboard::default(); 
     dashboard.set_shared_connections(shared_connections);
+    dashboard.set_shared_bandwidth_statistics(shared_bandwidth_statistics);
     
     loop {
         cat.animate(&mut terminal);

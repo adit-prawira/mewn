@@ -4,8 +4,9 @@ use crossterm::event::KeyCode;
 use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::style::Style;
-use ratatui::text::Line;
-use ratatui::widgets::{Paragraph, Tabs};
+use ratatui::widgets::Tabs;
+use crate::bandwidth::resource::BandwidthStatistic;
+use crate::bandwidth::user_interface::BandwidthUserInterface;
 use crate::connections::user_interface::ConnectionUserInterface;
 use crate::connections::resource::Connection;
 use crate::terminal::Terminal;
@@ -19,7 +20,9 @@ pub enum Tab {
 pub struct Dashboard {
     current_tab: Tab,
     shared_connections: Arc<Mutex<Vec<Connection>>>,
-    connection_ui: ConnectionUserInterface
+    connection_ui: ConnectionUserInterface,
+    shared_bandwidth_statistics: Arc<Mutex<Vec<BandwidthStatistic>>>,
+    bandwidth_ui: BandwidthUserInterface
 }
 
 impl Default for Dashboard {
@@ -27,7 +30,9 @@ impl Default for Dashboard {
         Self { 
             current_tab: Tab::Connections,
             shared_connections: Arc::new(Mutex::new(Vec::new())),
-            connection_ui: ConnectionUserInterface::default()
+            connection_ui: ConnectionUserInterface::default(),
+            shared_bandwidth_statistics: Arc::new(Mutex::new(Vec::new())),
+            bandwidth_ui: BandwidthUserInterface::default()
         }
     }
 }
@@ -35,6 +40,10 @@ impl Default for Dashboard {
 impl Dashboard {
     pub fn set_shared_connections(&mut self, connections: Arc<Mutex<Vec<Connection>>>) {
         self.shared_connections = connections;
+    }
+    
+    pub fn set_shared_bandwidth_statistics(&mut self, bandwidth_statistics: Arc<Mutex<Vec<BandwidthStatistic>>>) {
+       self.shared_bandwidth_statistics = bandwidth_statistics; 
     }
 
     pub fn render(&mut self, terminal: &mut Terminal) {
@@ -79,11 +88,8 @@ impl Dashboard {
                 self.connection_ui.render(frame, content_area, &connections)
             },
             Tab::Bandwidth => {
-                let text = "Bandwidth Tab - Coming Soon";
-                let line = Line::from(text).style(Style::default().fg(TEXT_COLOR));
-                let paragraph = Paragraph::new(line);
-
-                frame.render_widget(paragraph, content_area); 
+                let bandwidth_statistics = self.shared_bandwidth_statistics.lock().unwrap();
+                self.bandwidth_ui.render(frame, content_area, &bandwidth_statistics);
             } 
         };
     }
@@ -97,7 +103,13 @@ impl Dashboard {
                     _ => {}
                 } 
             }
-            Tab::Bandwidth => {}
+            Tab::Bandwidth => {
+                match key_code {
+                    KeyCode::Up => self.bandwidth_ui.previous_row(),
+                    KeyCode::Down => self.bandwidth_ui.next_row(),
+                    _ => {}
+                }
+            }
         };
     }
 }
