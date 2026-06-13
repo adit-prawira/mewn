@@ -1,3 +1,4 @@
 pub mod renderer;
-mod resource;
+pub mod store;
+pub mod resource;
 mod lsof_stream;
