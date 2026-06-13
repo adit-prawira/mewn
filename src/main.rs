@@ -39,6 +39,7 @@ async fn main() {
         {
             match key.code {
                 KeyCode::Char('q') => return,
+                KeyCode::Char('Q') => return,
                 KeyCode::Tab => dashboard.next_tab(),
                 _ => {
                     dashboard.handle_keys(key.code);

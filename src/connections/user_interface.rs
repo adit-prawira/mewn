@@ -2,6 +2,8 @@ use ratatui::Frame;
 use ratatui::layout::{Constraint, Rect};
 use ratatui::style::{Color, Style};
 use ratatui::widgets::{Block, BorderType, Borders, Cell, Padding, Row, Table};
+use crate::theme::{GREEN, PRIMARY, TEXT_COLOR, TEXT_COLOR_DARKER, YELLOW, YELLOW_DARKER};
+
 use super::resource::Connection;
 
 #[derive(Default)]
@@ -9,8 +11,6 @@ pub struct ConnectionUserInterface {
     selected_row: usize,
     scroll_offset: usize
 }
-
-const DEFAULT_TEXT_COLOR: Color = Color::Rgb(156, 164, 201);
 
 impl ConnectionUserInterface {
     pub fn render(&mut self, frame: &mut Frame, area: Rect, connections: &[Connection]) {
@@ -27,11 +27,11 @@ impl ConnectionUserInterface {
         let header_cells = ["", "", "PID", "Process",  "Protocol", "Local", "Remote", "State", ""]
             .iter()
             .map(|header| {
-                let style = Style::default().fg(Color::Rgb(186, 196, 238)).bold();
+                let style = Style::default().fg(TEXT_COLOR).bold();
                 Cell::from(*header).style(style)
             });
 
-        let default_text_style = Style::default().fg(DEFAULT_TEXT_COLOR);
+        let default_text_style = Style::default().fg(TEXT_COLOR_DARKER);
         let table_header = Row::new(header_cells).height(1);
         let table_rows = connections.iter().enumerate()
             .skip(self.scroll_offset)
@@ -52,10 +52,10 @@ impl ConnectionUserInterface {
                     Cell::from(""),
                     Cell::from(selected_indicator).style(default_text_style),
                     Cell::from(connection.pid.to_string()).style(default_text_style),
-                    Cell::from(connection.process.to_string()).style(Style::default().fg(Color::Rgb(124, 170, 131))),
+                    Cell::from(connection.process.to_string()).style(Style::default().fg(GREEN)),
                     Cell::from(connection.protocol.to_string()).style(default_text_style),
-                    Cell::from(connection.local.to_string()).style(Style::default().fg(Color::Rgb(240, 217, 168))),
-                    Cell::from(connection.remote.to_string()).style(Style::default().fg(Color::Rgb(173, 132, 105))),
+                    Cell::from(connection.local.to_string()).style(Style::default().fg(YELLOW)),
+                    Cell::from(connection.remote.to_string()).style(Style::default().fg(YELLOW_DARKER)),
                     Cell::from(connection.state.to_string()).style(default_text_style),
                     Cell::from("")
                 ]).style(style)
@@ -64,7 +64,7 @@ impl ConnectionUserInterface {
         let content_block = Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
-            .style(Style::default().fg(Color::Rgb(137, 180, 250)))
+            .style(Style::default().fg(PRIMARY))
             .padding(Padding::new(2, 2, 1, 1));
 
         let table = Table::new(table_rows, [

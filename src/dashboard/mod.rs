@@ -3,12 +3,13 @@ use std::sync::{Arc, Mutex};
 use crossterm::event::KeyCode;
 use ratatui::Frame;
 use ratatui::layout::Rect;
-use ratatui::style::{Color, Style};
+use ratatui::style::Style;
 use ratatui::text::Line;
 use ratatui::widgets::{Paragraph, Tabs};
 use crate::connections::user_interface::ConnectionUserInterface;
 use crate::connections::resource::Connection;
 use crate::terminal::Terminal;
+use crate::theme::{GREEN, TEXT_COLOR};
 
 pub enum Tab {
     Connections,
@@ -62,8 +63,8 @@ impl Dashboard {
 
         let tabs = Tabs::new(tab_titles)
             .select(selected)
-            .style(Style::default().fg(Color::Rgb(186, 196, 238)))
-            .highlight_style(Style::default().fg(Color::Rgb(124, 170, 131)));
+            .style(Style::default().fg(TEXT_COLOR))
+            .highlight_style(Style::default().fg(GREEN));
 
         let tab_area = Rect::new(area.x, area.y, area.width, 1);
         frame.render_widget(tabs, tab_area);
@@ -79,7 +80,7 @@ impl Dashboard {
             },
             Tab::Bandwidth => {
                 let text = "Bandwidth Tab - Coming Soon";
-                let line = Line::from(text).style(Style::default().fg(Color::White));
+                let line = Line::from(text).style(Style::default().fg(TEXT_COLOR));
                 let paragraph = Paragraph::new(line);
 
                 frame.render_widget(paragraph, content_area); 
