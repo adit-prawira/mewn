@@ -4,7 +4,7 @@ use ratatui::style::{Color, Style};
 use ratatui::text::Line;
 use ratatui::widgets::{Paragraph, Tabs};
 
-use crate::connections::Connection;
+use crate::connections::renderer::ConnectionRenderer;
 use crate::terminal::Terminal;
 
 pub enum Tab {
@@ -60,7 +60,7 @@ impl Dashboard {
         let content_area = Rect::new(area.x, area.y + 1, area.width, area.height - 1);
        
         match self.current_tab {
-            Tab::Connections => Connection::render(frame, content_area),
+            Tab::Connections => ConnectionRenderer::render(frame, content_area),
             Tab::Bandwidth => {
                 let text = "Bandwidth Tab - Coming Soon";
                 let line = Line::from(text).style(Style::default().fg(Color::White));
