@@ -1,8 +1,8 @@
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use super::netstat_stream::NetstatStream;
 use super::resource::BandwidthStatistic;
-use super::statistic_stream::BandwidthStream;
 
 pub struct BandwidthStore {
     shared_bandwidth_statistics: Arc<Mutex<Vec<BandwidthStatistic>>>
@@ -22,7 +22,7 @@ impl BandwidthStore {
             let mut interval = tokio::time::interval(Duration::from_secs(1));
             loop {
                 interval.tick().await;
-                let bandwidth_statistics = tokio::task::spawn_blocking(BandwidthStream::get_statistics)
+                let bandwidth_statistics = tokio::task::spawn_blocking(NetstatStream::get_statistics)
                     .await
                     .unwrap_or_default();
                 let mut bandwidth_statistics_mutex = shared_bandwidth_statistics.lock().unwrap();

@@ -1,5 +1,5 @@
 pub mod user_interface;
 pub mod store;
 pub mod resource;
-mod statistic_stream;
+mod netstat_stream; 
 

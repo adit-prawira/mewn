@@ -1,6 +1,7 @@
 use ratatui::Frame;
-use ratatui::layout::{Constraint, Rect};
+use ratatui::layout::{Alignment, Constraint, Rect};
 use ratatui::style::{Color, Style};
+use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, BorderType, Borders, Cell, Padding, Row, Table};
 
 use crate::theme::{GREEN, PRIMARY, TEXT_COLOR, TEXT_COLOR_DARKER, YELLOW};
@@ -25,8 +26,8 @@ impl BandwidthUserInterface {
             self.scroll_offset = self.selected_row.saturating_sub(viewport.saturating_sub(1));
         }
 
-        let header_cells = ["", "", "Interface", "Upload", "Download", "Total",""]
-            .iter()
+        let header_cells = ["", "", "Name", "Address", "Upload", "Download", "Total", "Maximum Transmission Unit", ""]
+            .iter() 
             .map(|header| {
                 let style = Style::default().fg(TEXT_COLOR).bold();
                 Cell::from(*header).style(style)
@@ -51,10 +52,15 @@ impl BandwidthUserInterface {
                 Row::new([
                     Cell::from(""),
                     Cell::from(selected_indicator).style(default_text_style),
-                    Cell::from(bandwidth_statistic.interface.to_string()).style(default_text_style),
+                    Cell::from(bandwidth_statistic.name.to_string()).style(default_text_style),
+                    Cell::from(bandwidth_statistic.address.to_string()).style(default_text_style),
                     Cell::from(bandwidth_statistic.upload.to_string()).style(Style::default().fg(GREEN)),
                     Cell::from(bandwidth_statistic.download.to_string()).style(Style::default().fg(YELLOW)),
                     Cell::from(bandwidth_statistic.total.to_string()).style(PRIMARY), 
+                    Cell::from(
+                       Line::from(Span::raw(&bandwidth_statistic.maximum_transmission_unit))
+                        .alignment(Alignment::Right)
+                    ).style(default_text_style),
                     Cell::from("")
                 ]).style(style)
             });
@@ -67,10 +73,12 @@ impl BandwidthUserInterface {
         let table = Table::new(table_rows, [
             Constraint::Length(1),
             Constraint::Length(2),
-            Constraint::Length(15),
+            Constraint::Length(10),
+            Constraint::Length(20),
             Constraint::Length(15),
             Constraint::Length(15),
             Constraint::Length(15), 
+            Constraint::Length(25),
             Constraint::Length(1)
         ])
         .header(table_header)
