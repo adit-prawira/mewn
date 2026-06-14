@@ -60,7 +60,9 @@ impl NetstatStream {
                     address: last_entry.address.to_string(),
                     maximum_transmission_unit: Self::format_bytes(maximum_transmission_unit),
                     upload: Self::format_bytes_per_seconds(upload_rate), 
-                    download: Self::format_bytes_per_seconds(download_rate), 
+                    upload_rate: upload_rate as u64,
+                    download: Self::format_bytes_per_seconds(download_rate),
+                    download_rate: download_rate as u64,
                     total: Self::format_bytes_per_seconds(total_rate) 
                 });
             }
@@ -71,8 +73,10 @@ impl NetstatStream {
                     name: entry.name.to_string(), 
                     address: entry.address.to_string(), 
                     maximum_transmission_unit: Self::format_bytes(entry.mtu as f64), 
-                    upload: Self::format_bytes_per_seconds(0.0), 
+                    upload: Self::format_bytes_per_seconds(0.0),
+                    upload_rate: 0,
                     download: Self::format_bytes_per_seconds(0.0), 
+                    download_rate: 0,
                     total: Self::format_bytes_per_seconds(0.0) 
                 })
                 .collect();
@@ -145,7 +149,7 @@ impl NetstatStream {
         Self::format_bytes_with_suffix(bytes, "")
     }
 
-    fn format_bytes_per_seconds(bytes_per_seconds: f64) -> String {
+    pub fn format_bytes_per_seconds(bytes_per_seconds: f64) -> String {
        Self::format_bytes_with_suffix(bytes_per_seconds, "/s") 
     }
 
