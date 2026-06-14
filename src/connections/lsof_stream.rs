@@ -30,6 +30,10 @@ impl Protocol {
 
 pub struct LsofStream;
 
+/*
+ * LsofStream executes lsof -i -n -P and parses the output into a list of active 
+ * network connections, extracting process info, addresses, and connection state.
+ * */
 impl LsofStream {
     pub fn get_connections() -> Vec<Connection>{
         // execute lsof -i -n -P 
