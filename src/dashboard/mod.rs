@@ -9,20 +9,27 @@ use crate::bandwidth::resource::BandwidthStatistic;
 use crate::bandwidth::user_interface::BandwidthUserInterface;
 use crate::connections::user_interface::ConnectionUserInterface;
 use crate::connections::resource::Connection;
+use crate::packet::resource::Packet;
+use crate::packet::user_interface::PacketUserInterface;
 use crate::terminal::Terminal;
 use crate::theme::{GREEN, TEXT_COLOR};
 
 pub enum Tab {
     Connections,
-    Bandwidth
+    Bandwidth,
+    Packet
 }
 
 pub struct Dashboard {
     current_tab: Tab,
     shared_connections: Arc<Mutex<Vec<Connection>>>,
     connection_ui: ConnectionUserInterface,
+    
     shared_bandwidth_statistics: Arc<Mutex<Vec<BandwidthStatistic>>>,
-    bandwidth_ui: BandwidthUserInterface
+    bandwidth_ui: BandwidthUserInterface,
+
+    shared_packets: Arc<Mutex<Vec<Packet>>>,
+    packet_ui: PacketUserInterface
 }
 
 impl Default for Dashboard {
@@ -32,7 +39,9 @@ impl Default for Dashboard {
             shared_connections: Arc::new(Mutex::new(Vec::new())),
             connection_ui: ConnectionUserInterface::default(),
             shared_bandwidth_statistics: Arc::new(Mutex::new(Vec::new())),
-            bandwidth_ui: BandwidthUserInterface::default()
+            bandwidth_ui: BandwidthUserInterface::default(),
+            shared_packets: Arc::new(Mutex::new(Vec::new())),
+            packet_ui: PacketUserInterface::default()
         }
     }
 }
@@ -46,6 +55,10 @@ impl Dashboard {
        self.shared_bandwidth_statistics = bandwidth_statistics; 
     }
 
+    pub fn set_shared_packets(&mut self, packets: Arc<Mutex<Vec<Packet>>>) {
+        self.shared_packets = packets;
+    }
+
     pub fn render(&mut self, terminal: &mut Terminal) {
         terminal.draw(|f| {
             let area = f.area();
@@ -57,17 +70,19 @@ impl Dashboard {
 
     pub fn next_tab(&mut self) {
         self.current_tab = match self.current_tab {
-            Tab::Bandwidth => Tab::Connections,
-            Tab::Connections => Tab::Bandwidth
+            Tab::Connections => Tab::Bandwidth,
+            Tab::Bandwidth => Tab::Packet,
+            Tab::Packet => Tab::Connections
         }
     }
 
 
     fn render_tabs(&self, frame: &mut Frame, area: &Rect) {
-        let tab_titles = vec!["Connections", "Bandwidth"];
+        let tab_titles = vec!["Connections", "Bandwidth", "Packets"];
         let selected = match self.current_tab {
             Tab::Connections => 0,
-            Tab::Bandwidth => 1
+            Tab::Bandwidth => 1,
+            Tab::Packet => 2
         };
 
         let tabs = Tabs::new(tab_titles)
@@ -90,7 +105,11 @@ impl Dashboard {
             Tab::Bandwidth => {
                 let bandwidth_statistics = self.shared_bandwidth_statistics.lock().unwrap();
                 self.bandwidth_ui.render(frame, content_area, &bandwidth_statistics);
-            } 
+            },
+            Tab::Packet => {
+                let packets = self.shared_packets.lock().unwrap();
+                self.packet_ui.render(frame, content_area, &packets);
+            }
         };
     }
 
@@ -102,11 +121,18 @@ impl Dashboard {
                     KeyCode::Down => self.connection_ui.next_row(),
                     _ => {}
                 } 
-            }
+            },
             Tab::Bandwidth => {
                 match key_code {
                     KeyCode::Up => self.bandwidth_ui.previous_row(),
                     KeyCode::Down => self.bandwidth_ui.next_row(),
+                    _ => {}
+                }
+            },
+            Tab::Packet => {
+                match key_code {
+                    KeyCode::Up => self.packet_ui.previous_row(),
+                    KeyCode::Down => self.packet_ui.next_row(),
                     _ => {}
                 }
             }
