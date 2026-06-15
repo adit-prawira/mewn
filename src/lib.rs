@@ -4,3 +4,4 @@ pub mod dashboard;
 pub mod connections;
 pub mod theme;
 pub mod bandwidth;
+pub mod packet;

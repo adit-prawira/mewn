@@ -5,6 +5,7 @@ use mewn::bandwidth::store::BandwidthStore;
 use mewn::cat::Cat;
 use mewn::connections::store::ConnectionStore;
 use mewn::dashboard::Dashboard;
+use mewn::packet::store::PacketStore;
 use mewn::terminal::Terminal;
 
 #[tokio::main]
@@ -14,14 +15,17 @@ async fn main() {
 
     let connection_store = ConnectionStore::default();
     let bandwidth_store = BandwidthStore::default();
+    let packet_store = PacketStore::default();
 
     let shared_connections = connection_store.watch().await;
     let shared_bandwidth_statistics = bandwidth_store.watch().await;
+    let shared_packets = packet_store.watch().await;
 
     let mut dashboard = Dashboard::default(); 
     dashboard.set_shared_connections(shared_connections);
     dashboard.set_shared_bandwidth_statistics(shared_bandwidth_statistics);
-    
+    dashboard.set_shared_packets(shared_packets);
+
     loop {
         cat.animate(&mut terminal);
         if event::poll(Duration::from_millis(50)).expect("poll failed") 
