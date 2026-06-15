@@ -4,8 +4,9 @@ use std::time::{Duration, Instant};
 use ratatui::Frame;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Style};
+use ratatui::symbols::Marker;
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, BorderType, Borders, Cell, Padding, Paragraph, Row, Sparkline, Table};
+use ratatui::widgets::{Axis, Block, BorderType, Borders, Cell, Chart, Dataset, GraphType, Padding, Row, Table};
 
 use crate::bandwidth::netstat_stream::NetstatStream;
 use crate::theme::{GREEN, PRIMARY, TEXT_COLOR, TEXT_COLOR_DARKER, YELLOW};
@@ -26,7 +27,7 @@ impl BandwidthUserInterface {
         self.selected_row = self.selected_row.min(bandwidth_statistics.len().saturating_sub(1));
         
         let [table_area, graph_area] = Layout::default()
-            .direction(Direction::Horizontal)
+            .direction(Direction::Vertical)
             .constraints([Constraint::Fill(1), Constraint::Percentage(40)])
             .areas::<2>(area);
 
@@ -118,84 +119,65 @@ impl BandwidthUserInterface {
 
         let Some(selected_statistic) = bandwidth_statistics.get(self.selected_row) else {return;};
 
-        let upload_data = self.upload_history.get(&selected_statistic.name)
-            .map(|datum| datum.as_slice())
-            .unwrap_or(&[]);
-        let download_data = self.download_history.get(&selected_statistic.name)
-            .map(|datum| datum.as_slice())
-            .unwrap_or(&[]);
-
         let [upload_area, download_area] = Layout::default()
-            .direction(Direction::Vertical)
+            .direction(Direction::Horizontal)
             .constraints([Constraint::Fill(1), Constraint::Fill(1)])
             .areas::<2>(graph_area);
         
+        let upload_data = self.upload_history.get(&selected_statistic.name)
+            .map(|datum| datum.as_slice())
+            .unwrap_or(&[]);
+         
+        let download_data = self.download_history.get(&selected_statistic.name)
+            .map(|datum| datum.as_slice())
+            .unwrap_or(&[]);
+        
+        let upload_points: Vec<(f64, f64)> = upload_data.iter()
+            .enumerate()
+            .map(|(index, &datum)| (index as f64, datum as f64))
+            .collect();
+
+        let download_points: Vec<(f64, f64)> = download_data.iter()
+            .enumerate()
+            .map(|(index, &datum)| (index as f64, datum as f64))
+            .collect();
         let upload_max = upload_data.iter().max().copied().unwrap_or(0);
         let download_max = download_data.iter().max().copied().unwrap_or(0);
+        
+        let upload_dataset = Dataset::default()
+            .graph_type(GraphType::Area)
+            .marker(Marker::Braille)
+            .style(Style::default().fg(GREEN))
+            .data(&upload_points);
 
-        let [upload_graph_area, upload_x_axis] = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([Constraint::Fill(1), Constraint::Length(1)])
-            .areas::<2>(upload_area);
-        let upload_graph = Sparkline::default()
-            .block(Block::default()
+        let upload_chart = Chart::new(vec![upload_dataset]).block(
+            Block::default()
                .title(format!("Upload Rate ({}) [max: {}]", selected_statistic.upload, NetstatStream::format_bytes_per_seconds(upload_max as f64)))
                .title_style(Style::default().fg(TEXT_COLOR))
                .borders(Borders::ALL)
                .border_type(BorderType::Rounded)
-               .style(Style::default().fg(PRIMARY))
-            )
-            .data(upload_data)
-            .max(upload_max)
-            .style(Style::default().fg(GREEN));
-        frame.render_widget(upload_graph, upload_graph_area);
-        frame.render_widget(
-            Paragraph::new({
-                let left = "60s ";
-                let right = " now";
-                let width = upload_x_axis.width as usize;
-                let fill = if width > left.len() + right.len() {
-                  "─".repeat(width - left.len() - right.len())
-                } else {
-                  String::new()
-                };
-                Line::from(Span::styled(format!("{left}{fill}{right}"), default_text_style))
-            }),
-            upload_x_axis,
-        );        
+               .style(Style::default().fg(PRIMARY)))
+        .x_axis(Axis::default().title("Seconds").bounds([0.0, upload_points.len() as f64]).style(Style::default().fg(TEXT_COLOR_DARKER)))
+        .y_axis(Axis::default().title("Bytes/s").bounds([0.0, (upload_max as f64).max(1.0)]).style(Style::default().fg(TEXT_COLOR_DARKER)));
+        
+        frame.render_widget(upload_chart, upload_area);
 
-        let [download_graph_area, download_x_axis] = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([Constraint::Fill(1), Constraint::Length(1)])
-            .areas::<2>(download_area);
-        let download_graph = Sparkline::default()
-            .block(Block::default()
+        let download_dataset = Dataset::default()
+            .graph_type(GraphType::Area)
+            .marker(Marker::Braille)
+            .style(Style::default().fg(YELLOW))
+            .data(&download_points);
+        let download_chart = Chart::new(vec![download_dataset]).block(
+            Block::default()
                .title(format!("Download Rate ({}) [max: {}]", selected_statistic.download, NetstatStream::format_bytes_per_seconds(download_max as f64)))
                .title_style(Style::default().fg(TEXT_COLOR))
                .borders(Borders::ALL)
                .border_type(BorderType::Rounded)
-               .style(Style::default().fg(PRIMARY))
-            )
-            .data(download_data)
-            .max(download_max)
-            .style(Style::default().fg(YELLOW));
-
-        frame.render_widget(download_graph, download_graph_area);
-        frame.render_widget(
-            Paragraph::new({
-                let left = "60s ";
-                let right = " now";
-                let width = download_x_axis.width as usize;
-                let fill = if width > left.len() + right.len() {
-                  "─".repeat(width - left.len() - right.len())
-                } else {
-                  String::new()
-                };
-                Line::from(Span::styled(format!("{left}{fill}{right}"), default_text_style))
-            }),
-            download_x_axis,
-        );        
-
+               .style(Style::default().fg(PRIMARY)))
+            .x_axis(Axis::default().title("Seconds").bounds([0.0, download_points.len() as f64]).style(Style::default().fg(TEXT_COLOR_DARKER)))
+            .y_axis(Axis::default().title("Bytes/s").bounds([0.0, (download_max as f64).max(1.0)]).style(Style::default().fg(TEXT_COLOR_DARKER)));
+        
+        frame.render_widget(download_chart, download_area); 
     }
 
     pub fn next_row(&mut self) {
