@@ -8,8 +8,8 @@ use ratatui::symbols::Marker;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Axis, Block, BorderType, Borders, Cell, Chart, Dataset, GraphType, Padding, Row, Table};
 
-use crate::bandwidth::netstat_stream::NetstatStream;
 use crate::theme::{GREEN, PRIMARY, TEXT_COLOR, TEXT_COLOR_DARKER, YELLOW};
+use crate::utilities::bytes_format::BytesFormat;
 
 use super::resource::BandwidthStatistic;
 
@@ -152,7 +152,7 @@ impl BandwidthUserInterface {
 
         let upload_chart = Chart::new(vec![upload_dataset]).block(
             Block::default()
-               .title(format!("Upload Rate ({}) [max: {}]", selected_statistic.upload, NetstatStream::format_bytes_per_seconds(upload_max as f64)))
+               .title(format!("Upload Rate ({}) [max: {}]", selected_statistic.upload, BytesFormat::format_bytes_per_seconds(upload_max as f64)))
                .title_style(Style::default().fg(TEXT_COLOR))
                .borders(Borders::ALL)
                .border_type(BorderType::Rounded)
@@ -169,7 +169,7 @@ impl BandwidthUserInterface {
             .data(&download_points);
         let download_chart = Chart::new(vec![download_dataset]).block(
             Block::default()
-               .title(format!("Download Rate ({}) [max: {}]", selected_statistic.download, NetstatStream::format_bytes_per_seconds(download_max as f64)))
+               .title(format!("Download Rate ({}) [max: {}]", selected_statistic.download, BytesFormat::format_bytes_per_seconds(download_max as f64)))
                .title_style(Style::default().fg(TEXT_COLOR))
                .borders(Borders::ALL)
                .border_type(BorderType::Rounded)

@@ -4,10 +4,7 @@ use std::sync::Mutex;
 use std::time::Instant;
 
 use crate::bandwidth::resource::BandwidthStatistic;
-
-const KB: u64 = 1024;
-const MB: u64 = KB * 1024;
-const GB: u64 = MB * 1024;
+use crate::utilities::bytes_format::BytesFormat;
 
 struct NetstatEntry {
     name: String, 
@@ -58,12 +55,12 @@ impl NetstatStream {
                 statistics.push(BandwidthStatistic { 
                     name: last_entry.name.to_string(),
                     address: last_entry.address.to_string(),
-                    maximum_transmission_unit: Self::format_bytes(maximum_transmission_unit),
-                    upload: Self::format_bytes_per_seconds(upload_rate), 
+                    maximum_transmission_unit: BytesFormat::format_bytes(maximum_transmission_unit),
+                    upload: BytesFormat::format_bytes_per_seconds(upload_rate), 
                     upload_rate: upload_rate as u64,
-                    download: Self::format_bytes_per_seconds(download_rate),
+                    download: BytesFormat::format_bytes_per_seconds(download_rate),
                     download_rate: download_rate as u64,
-                    total: Self::format_bytes_per_seconds(total_rate) 
+                    total: BytesFormat::format_bytes_per_seconds(total_rate) 
                 });
             }
             statistics
@@ -72,12 +69,12 @@ impl NetstatStream {
                 .map(|entry| BandwidthStatistic { 
                     name: entry.name.to_string(), 
                     address: entry.address.to_string(), 
-                    maximum_transmission_unit: Self::format_bytes(entry.mtu as f64), 
-                    upload: Self::format_bytes_per_seconds(0.0),
+                    maximum_transmission_unit: BytesFormat::format_bytes(entry.mtu as f64), 
+                    upload: BytesFormat::format_bytes_per_seconds(0.0),
                     upload_rate: 0,
-                    download: Self::format_bytes_per_seconds(0.0), 
+                    download: BytesFormat::format_bytes_per_seconds(0.0), 
                     download_rate: 0,
-                    total: Self::format_bytes_per_seconds(0.0) 
+                    total: BytesFormat::format_bytes_per_seconds(0.0) 
                 })
                 .collect();
             statistics
@@ -143,28 +140,5 @@ impl NetstatStream {
         let obytes = parts[obytes_index].parse::<u64>().ok()?;
         
         Some(NetstatEntry { name, mtu, address, ibytes, obytes })
-    } 
-
-    fn format_bytes(bytes: f64) -> String {
-        Self::format_bytes_with_suffix(bytes, "")
-    }
-
-    pub fn format_bytes_per_seconds(bytes_per_seconds: f64) -> String {
-       Self::format_bytes_with_suffix(bytes_per_seconds, "/s") 
-    }
-
-    fn format_bytes_with_suffix(bytes: f64, suffix: &str) -> String {
-        if bytes >= GB as f64 {
-            let gigabytes = bytes / GB as f64;
-            format!("{:.2} GB{}", gigabytes, suffix)
-        } else if bytes >= MB as f64 {
-            let megabytes = bytes / MB as f64;
-            format!("{:.2} MB{}", megabytes, suffix)
-        } else if bytes >= KB as f64 {
-            let kilobytes = bytes / KB as f64;
-            format!("{:.2} KB{}", kilobytes, suffix)
-        } else {
-            format!("{:.2} B{}", bytes, suffix)
-        }
-    }
+    }  
 }
