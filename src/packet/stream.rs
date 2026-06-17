@@ -1,3 +1,4 @@
+use std::net::IpAddr;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
@@ -10,6 +11,7 @@ use super::resource::Packet;
 
 static CAPTURE: Mutex<Option<Capture<Active>>> = Mutex::new(None);
 static CAPTURE_START: Mutex<Option<Instant>> = Mutex::new(None);
+
 pub struct PacketStream;
 
 impl PacketStream {
@@ -20,8 +22,25 @@ impl PacketStream {
         let capture = match capture_guard.as_mut() {
             Some(c) => c,
             None => {
-                let Some(devices) = Device::list().ok() else { return Vec::new();};
-                let Some(device) = devices.iter().find(|device| !device.addresses.is_empty()) else { return Vec::new(); };
+                let Some(devices) = Device::list().ok() else { return Vec::new(); };
+                let Some(device) = devices.iter()
+                    .filter(|device| device.flags.is_up() 
+                        && device.flags.is_running()
+                        && !device.flags.is_loopback()
+                        && !device.addresses.is_empty()
+                    )
+                    .min_by_key(|device| {
+                        let has_routable_ipv4 = device.addresses.iter().any(|address| {
+                            if let IpAddr::V4(ipv4) = address.addr {
+                                !ipv4.is_link_local()
+                            } else {
+                                false
+                            }
+                        });
+                        if has_routable_ipv4 { 0 } else { 1 }
+                    }) 
+                else { return Vec::new(); };
+
                 let Ok(inactive) = Capture::from_device(device.clone()) else { return Vec::new(); };
                 let Some(active) = inactive.promisc(true).snaplen(65535).timeout(100).open().ok() else { return Vec::new(); };
                 *CAPTURE_START.lock().unwrap() = Some(Instant::now());
@@ -62,5 +81,5 @@ impl PacketStream {
         }
 
         new_packets
-    }
+    } 
 }

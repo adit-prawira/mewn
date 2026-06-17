@@ -6,10 +6,26 @@ use mewn::cat::Cat;
 use mewn::connections::store::ConnectionStore;
 use mewn::dashboard::Dashboard;
 use mewn::packet::store::PacketStore;
+use mewn::permissions::bpf::BpfAccess;
+use mewn::permissions::setup::PermissionSetup;
 use mewn::terminal::Terminal;
 
 #[tokio::main]
-async fn main() {   
+async fn main() -> anyhow::Result<()>{  
+    let args: Vec<String> = std::env::args().collect();
+
+    if args.contains(&"--setup".to_string()) {
+        return PermissionSetup::run_setup();
+    }
+
+    if args.contains(&"--teardown".to_string()) {
+        return PermissionSetup::run_teardown();
+    }
+
+    if !BpfAccess::is_available() {
+        eprintln!("{}", BpfAccess::help_message());
+    }
+    
     let mut terminal = Terminal::init();
     let mut cat = Cat::default();
 
@@ -47,8 +63,8 @@ async fn main() {
             && let Ok(Event::Key(key)) = event::read()
         {
             match key.code {
-                KeyCode::Char('q') => return,
-                KeyCode::Char('Q') => return,
+                KeyCode::Char('q') => return Ok(()),
+                KeyCode::Char('Q') => return Ok(()),
                 KeyCode::Tab => dashboard.next_tab(),
                 _ => {
                     dashboard.handle_keys(key.code);

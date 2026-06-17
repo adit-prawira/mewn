@@ -1,8 +1,10 @@
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Rect};
 use ratatui::style::{Color, Style};
-use ratatui::widgets::{Block, BorderType, Borders, Cell, Padding, Row, Table};
+use ratatui::text::{Line, Span};
+use ratatui::widgets::{Block, BorderType, Borders, Cell, Padding, Paragraph, Row, Table};
 
+use crate::permissions::bpf::BpfAccess;
 use crate::theme::{GREEN, PRIMARY, TEXT_COLOR, TEXT_COLOR_DARKER, YELLOW, YELLOW_DARKER};
 
 use super::resource::Packet;
@@ -17,6 +19,23 @@ pub struct PacketUserInterface {
 impl PacketUserInterface {
     pub fn render(&mut self, frame: &mut Frame, area: Rect, packets: &[Packet]) {
         self.selected_row = self.selected_row.min(packets.len().saturating_sub(1));
+        
+        if packets.is_empty() && !BpfAccess::is_available() {
+            let block = Block::default()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded)
+                .style(Style::default().fg(PRIMARY))
+                .padding(Padding::new(2, 2, 1, 1));
+            let lines = vec![
+                Line::from(Span::styled("Permission Denied", Style::default().fg(YELLOW).bold())),
+                Line::from(""),
+                Line::from(BpfAccess::help_message()).style(Style::default().fg(TEXT_COLOR))
+            ];
+
+            let warning = Paragraph::new(lines).block(block);
+            frame.render_widget(warning, area);
+            return;
+        }
 
         let viewport = (area.height as usize).saturating_sub(3).max(1);
         if self.selected_row < self.scroll_offset {
