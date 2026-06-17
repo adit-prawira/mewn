@@ -5,3 +5,4 @@ pub mod connections;
 pub mod theme;
 pub mod bandwidth;
 pub mod packet;
+pub mod utilities;

@@ -39,6 +39,7 @@ jobs:
             libudev-dev \
             libwayland-dev \
             libxkbcommon-dev \
+            libpcap-dev \
             pkg-config
 
       - name: Clippy
