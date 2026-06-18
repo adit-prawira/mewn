@@ -4,6 +4,28 @@ use anyhow::{Context, Result, bail};
 
 use crate::permissions::traits::OsSetup;
 
+/** Sets up packet capture capability on Linux via `setcap`.
+ *
+ *  Grants the `cap_net_raw+ep` capability to the mewn binary, allowing
+ *  non-root packet capture without requiring sudo on every run.
+ *
+ *  Prerequisite: `libcap2-bin` must be installed (`sudo apt install libcap2-bin`).
+ *
+ *  Setup flow:
+ *    1. Verify `setcap` is available on the system.
+ *    2. Check the binary's current capabilities via `getcap`.
+ *    3. If already `cap_net_raw+ep`, skip — idempotent.
+ *    4. Otherwise, apply `setcap cap_net_raw+ep <binary_path>`.
+ *    5. Re-verify with `getcap` to confirm the capability was set.
+ *
+ *  Teardown removes the capability via `setcap -r <binary_path>`.
+ *
+ *  Must be run with `sudo mewn --setup`. Without root, `setcap` will
+ *  fail with a permission error.
+ *
+ *  Note: rebuilding the binary (e.g. `cargo build`) overwrites the
+ *  executable and strips the capability. Re-run `--setup` after rebuilds.
+ */
 pub struct LinuxSetup; 
 
 impl OsSetup for LinuxSetup {
