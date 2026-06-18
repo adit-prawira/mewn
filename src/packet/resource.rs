@@ -4,5 +4,6 @@ pub struct Packet {
     pub protocol: String,
     pub source: String,
     pub destination: String,
-    pub size: String
+    pub size: String,
+    pub dns_domain: Option<String>
 }

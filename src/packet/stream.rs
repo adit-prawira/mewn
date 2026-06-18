@@ -9,6 +9,8 @@ use crate::utilities::bytes_format::BytesFormat;
 
 use super::resource::Packet;
 
+const DNS_PORT: u16 = 53;
+
 static CAPTURE: Mutex<Option<Capture<Active>>> = Mutex::new(None);
 static CAPTURE_START: Mutex<Option<Instant>> = Mutex::new(None);
 
@@ -54,15 +56,23 @@ impl PacketStream {
             let Ok(parsed_packet) = SlicedPacket::from_ethernet(packet.data) else {continue;};
             let start = *CAPTURE_START.lock().unwrap().get_or_insert(Instant::now());
             let timestamp = format!("+{:.3}s", start.elapsed().as_secs_f64());
-            
-            let (protocol, source_port, destination_port) = match parsed_packet.transport {
-                Some(TransportSlice::Tcp(tcp)) => ("TCP", tcp.source_port(), tcp.destination_port()),
-                Some(TransportSlice::Udp(udp)) => ("UDP", udp.source_port(), udp.destination_port()),
-                Some(TransportSlice::Icmpv4(_)) => ("ICMPV4", 0, 0),
-                Some(TransportSlice::Icmpv6(_)) => ("ICMPV6", 0, 0),
-                None => ("???", 0, 0)
+         
+            let (protocol, source_port, destination_port, dns_domain) = match parsed_packet.transport {
+                Some(TransportSlice::Tcp(tcp)) => ("TCP", tcp.source_port(), tcp.destination_port(), None),
+                Some(TransportSlice::Udp(udp)) => {
+                    let source_port = udp.source_port();
+                    let destination_port = udp.destination_port();
+                    let dns_domain = if source_port == DNS_PORT || destination_port == DNS_PORT {
+                       Self::parsed_dns_domain(udp.payload()) 
+                    } else {
+                        None
+                    };
+                    ("UDP", source_port, destination_port, dns_domain)
+                },
+                Some(TransportSlice::Icmpv4(_)) => ("ICMPV4", 0, 0, None),
+                Some(TransportSlice::Icmpv6(_)) => ("ICMPV6", 0, 0, None),
+                None => ("???", 0, 0, None)
             };
-
             let (source_ip, destination_ip) = match parsed_packet.net {
                 Some(NetSlice::Ipv4(ipv4)) => (ipv4.header().source_addr().to_string(), ipv4.header().destination_addr().to_string()),
                 Some(NetSlice::Ipv6(ipv6)) => (ipv6.header().source_addr().to_string(), ipv6.header().destination_addr().to_string()),
@@ -74,12 +84,51 @@ impl PacketStream {
                 protocol: protocol.into(),
                 source: format!("{}:{}", source_ip, source_port),
                 destination: format!("{}:{}", destination_ip, destination_port),
-                size: BytesFormat::format_bytes(packet.len() as f64)
+                size: BytesFormat::format_bytes(packet.len() as f64),
+                dns_domain
             });
 
             if Instant::now() > deadline || new_packets.len() >= 1000 { break; };
         }
 
         new_packets
-    } 
+    }
+
+    fn parsed_dns_domain(packet_payload: &[u8]) -> Option<String> {
+        if packet_payload.len() < 12 {
+            return None;
+        }
+        let qdcount = u16::from_be_bytes([packet_payload[4], packet_payload[5]]) as usize;
+        if qdcount == 0 {
+            return None; 
+        }
+        
+        let mut labels: Vec<&str> = Vec::new(); 
+        let mut offset = 12; 
+
+        while offset < packet_payload.len() {
+            let size = packet_payload[offset] as usize; 
+            if size == 0 {
+                break;
+            }
+
+            if size & 0xC0 == 0xC0 {
+                break;
+            }
+
+            offset += 1;
+            if offset + size > packet_payload.len() {
+                return None;
+            }
+
+            let label = std::str::from_utf8(&packet_payload[offset..offset + size]).ok()?;
+            labels.push(label);
+            offset += size;
+        }
+
+        if labels.is_empty() {
+            return None;
+        }
+        Some(labels.join("."))
+    }
 }

@@ -2,6 +2,17 @@ use anyhow::Result;
 
 use crate::permissions::traits::OsSetup;
 
+/** Windows packet capture setup — informational only.
+ *
+ *  No automated setup is performed. Packet capture on Windows requires:
+ *    1. Npcap installed (https://npcap.com).
+ *    2. Running mewn as Administrator.
+ *
+ *  The setup command prints guidance for both prerequisites and returns
+ *  Ok — there is nothing to configure programmatically.
+ *
+ *  Teardown is a no-op on Windows.
+ */
 pub struct WindowsSetup; 
 
 impl OsSetup for WindowsSetup {

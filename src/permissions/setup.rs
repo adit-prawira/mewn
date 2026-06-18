@@ -1,6 +1,28 @@
 use std::process::Command;
 
 use anyhow::Result;
+
+/** Cross-platform entry point for packet capture permission management.
+ *
+ *  Dispatches to the platform-specific setup implementation at compile time
+ *  via `#[cfg(target_os)]`, calling `MacosSetup`, `LinuxSetup`, or
+ *  `WindowsSetup` depending on the host OS.
+ *
+ *  Commands:
+ *
+ *  mewn --setup    -> run_setup() -- configure BPF/capability permissions.
+ *  Prints a warning if not running as root, executes the platform
+ *  setup, verifies via `BpfAccess::is_available()`, and prints
+ *  platform-specific troubleshooting guidance on failure.
+ *
+ *  mewn --teardown -> run_teardown() -- reverse the setup, removing
+ *  launch daemons, file capabilities, or plist files.
+ *
+ *  Both commands exit the process immediately after completion -- the TUI
+ *  dashboard is never launched.
+ *
+ *  Unsupported platforms receive a `bail!("Unsupported platform")` error.
+ */
 pub struct PermissionSetup; 
 
 impl PermissionSetup {

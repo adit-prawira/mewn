@@ -71,13 +71,18 @@ impl PacketUserInterface {
                         .fg(Color::Gray)
                 };
 
+                let destination = if let Some(ref dns_domain) = packet.dns_domain {
+                    format!("{} ({})", packet.destination, dns_domain)
+                } else {
+                    packet.destination.to_string()
+                };
                 Row::new([
                     Cell::from(""),
                     Cell::from(selected_indicator).style(default_text_style),
                     Cell::from(packet.timestamp.to_string()).style(default_text_style),
                     Cell::from(packet.protocol.to_string()).style(Style::default().fg(GREEN)),
                     Cell::from(packet.source.to_string()).style(Style::default().fg(YELLOW)),
-                    Cell::from(packet.destination.to_string()).style(Style::default().fg(YELLOW_DARKER)),
+                    Cell::from(destination).style(Style::default().fg(YELLOW_DARKER)),
                     Cell::from(packet.size.to_string()).style(default_text_style),
                     Cell::from("")
                 ]).style(style)

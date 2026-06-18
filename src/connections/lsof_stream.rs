@@ -28,12 +28,27 @@ impl Protocol {
     }
 }
 
+/** Executes `lsof -i -n -P` and parses the output into a list of active
+ *  network connections.
+ *
+ *  `lsof` output format (header row then data rows):
+ *    COMMAND   PID   USER   FD   TYPE   DEVICE   SIZE/OFF   NODE   NAME
+ *    chrome    1234  user   42u  IPv4  0x...    0t0        TCP    192.168.1.5:52532->142.250.80.46:443 (ESTABLISHED)
+ *    dns-sd    567   user   8u   IPv4  0x...    0t0        UDP    *:5353
+ *
+ *  Columns extracted:
+ *    - COMMAND → process name
+ *    - PID     → process id
+ *    - NAME    → protocol, local address, remote address, connection state
+ *
+ *  TCP entries may include a connection state in parentheses (LISTEN,
+ *  ESTABLISHED, etc.). UDP entries have no state or remote address.
+ *
+ *  Returns an empty list if `lsof` is unavailable, returns an error
+ *  exit code, or produces no parseable output.
+ */
 pub struct LsofStream;
 
-/*
- * LsofStream executes lsof -i -n -P and parses the output into a list of active 
- * network connections, extracting process info, addresses, and connection state.
- * */
 impl LsofStream {
     pub fn get_connections() -> Vec<Connection>{
         // execute lsof -i -n -P 

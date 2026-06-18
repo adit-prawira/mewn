@@ -27,6 +27,28 @@ const PLIST_CONTENT: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 </plist>
 "#;
 
+/** Sets up BPF device permissions on macOS via a persistent LaunchDaemon
+ *  and immediate `chmod`.
+ *
+ *  Creates /Library/LaunchDaemons/com.mewn.bpf.plist — a launchd job that
+ *  runs `chmod go+rw /dev/bpf*` at every boot, granting read/write access
+ *  to BPF packet capture devices for non-root users.
+ *
+ *  To avoid requiring a reboot, `apply_bpf_permissions()` also runs the
+ *  equivalent `sh -c "chmod go+rw /dev/bpf*"` immediately after loading
+ *  the daemon.
+ *
+ *  Teardown unloads the daemon via `launchctl unload` and removes the
+ *  plist file.
+ *
+ *  Setup is idempotent: if the plist already exists and the daemon is
+ *  loaded, no changes are made. If the plist exists but isn't loaded
+ *  (e.g. after a manual unload), it is re-loaded and permissions are
+ *  re-applied.
+ *
+ *  Must be run with `sudo mewn --setup`. Without root, writing to
+ *  /Library/LaunchDaemons/ will fail with a permission error.
+ */
 pub struct MacosSetup; 
 
 impl OsSetup for MacosSetup { 

@@ -16,14 +16,32 @@ struct NetstatEntry {
 
 static LAST_NETSTAT_ENTRIES_SNAPSHOT: Mutex<Option<(Instant, HashMap<String, NetstatEntry>)>> = Mutex::new(None);
 
+/** Executes `netstat -ib` and parses the output into per-interface bandwidth
+ *  statistics with upload and download rates.
+ *
+ *  `netstat -ib` output (macOS):
+ *
+ *  ```text
+ *  Name  Mtu   Network       Address            Ipkts Ierrs    Ibytes Opkts Oerrs    Obytes Coll
+ *  en0   1500  <Link#6>     a4:5e:60:xx:xx:xx  12345     0   1234567 98765     0   9876543    0
+ *  en0   1500  192.168.1    router             12345     -   1234567 98765     -   9876543    -
+ *  lo0   16896 <Link#1>                         99999     0   9999999 99999     0   9999999    0
+ *  ```
+ *
+ *  Each interface produces two rows: a hardware <Link#> entry and (when
+ *  available) a network address entry. Only <Link#> rows are used — they
+ *  contain the actual byte counters.
+ *
+ *  Rate calculation: maintains a static snapshot of previous byte counts
+ *  with a timestamp. On each call, computes bytes_per_second from the
+ *  delta between current and previous ibytes/obytes. The first call
+ *  returns entries with zero rates (no prior snapshot to compare against).
+ *
+ *  Returns an empty list if `netstat` is unavailable or produces no
+ *  parseable output.
+ */
 pub struct NetstatStream;
 
-/*
- * NetstatStream executes netstat -ib and parses the output into a list of active
- * network bandwidth.
- *
- * This will conver each nestat entry into BandwidthStatistic object and return vector of it.
- * */
 impl NetstatStream { 
     pub fn get_statistics() -> Vec<BandwidthStatistic> {
         let output = Command::new("netstat")
