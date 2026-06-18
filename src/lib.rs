@@ -6,3 +6,4 @@ pub mod theme;
 pub mod bandwidth;
 pub mod packet;
 pub mod utilities;
+pub mod permissions;

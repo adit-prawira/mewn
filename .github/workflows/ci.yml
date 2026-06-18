@@ -14,8 +14,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-
+      - name: Checkout
+        uses: actions/checkout@v6
+        
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -31,16 +32,19 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
 
-      - name: Install Bevy system dependencies
+      - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            libasound2-dev \
-            libudev-dev \
-            libwayland-dev \
-            libxkbcommon-dev \
-            libpcap-dev \
-            pkg-config
+            libpcap-dev pkg-config
+      
+      - name: Check Linux target
+        run: cargo check 
+
+      - name: Check Windows target 
+        run: |
+          rustup target add x86_64-pc-windows-gnu
+          cargo check --target x86_64-pc-windows-gnu
 
       - name: Clippy
         run: cargo clippy --all-targets -- -D warnings
@@ -50,3 +54,12 @@ jobs:
 
       - name: Build
         run: cargo build --release
+
+  check-macos:
+    name: Check macOs target 
+    runs-on: macos-latest 
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Check macOS target
+        run: cargo check
