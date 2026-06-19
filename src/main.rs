@@ -8,6 +8,7 @@ use mewn::dashboard::Dashboard;
 use mewn::packet::store::PacketStore;
 use mewn::permissions::bpf::BpfAccess;
 use mewn::permissions::setup::PermissionSetup;
+use mewn::processes::store::ProcessStore;
 use mewn::terminal::Terminal;
 
 #[tokio::main]
@@ -32,15 +33,19 @@ async fn main() -> anyhow::Result<()>{
     let connection_store = ConnectionStore::default();
     let bandwidth_store = BandwidthStore::default();
     let packet_store = PacketStore::default();
+    let process_store = ProcessStore::default();
 
     let shared_connections = connection_store.watch().await;
     let shared_bandwidth_statistics = bandwidth_store.watch().await;
     let shared_packets = packet_store.watch().await;
+    let shared_process = process_store.watch().await;
 
     let mut dashboard = Dashboard::default(); 
+    
     dashboard.set_shared_connections(shared_connections);
     dashboard.set_shared_bandwidth_statistics(shared_bandwidth_statistics);
     dashboard.set_shared_packets(shared_packets);
+    dashboard.set_shared_processes(shared_process);
 
     loop {
         cat.animate(&mut terminal);
