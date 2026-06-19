@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Rect};
 use ratatui::style::{Color, Style};
@@ -9,18 +11,46 @@ use crate::theme::{GREEN, PRIMARY, TEXT_COLOR, TEXT_COLOR_DARKER, YELLOW, YELLOW
 
 use super::resource::Packet;
 
+#[derive(Clone, PartialEq, Copy)]
+enum ProtocolFilter {
+    Tcp,
+    Udp,
+    Icmp
+}
+
+impl Display for ProtocolFilter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ProtocolFilter::Tcp => write!(f, "TCP"),
+            ProtocolFilter::Udp => write!(f, "UDP"),
+            ProtocolFilter::Icmp => write!(f, "ICMP"),
+        }
+  }
+}
+
+impl ProtocolFilter {
+    pub fn matches(&self, protocol: &str) -> bool {
+       protocol.to_lowercase().starts_with(&self.to_string().to_lowercase()) 
+    }
+}
 
 #[derive(Default)]
 pub struct PacketUserInterface {
     selected_row: usize,
-    scroll_offset: usize
+    scroll_offset: usize,
+    active_protocol_filter: Option<ProtocolFilter>
 }
 
 impl PacketUserInterface {
     pub fn render(&mut self, frame: &mut Frame, area: Rect, packets: &[Packet]) {
-        self.selected_row = self.selected_row.min(packets.len().saturating_sub(1));
+        let filtered_packets: Vec<&Packet> = packets.iter()
+            .filter(|packet| {
+               self.active_protocol_filter.is_none_or(|protocol_filter| protocol_filter.matches(&packet.protocol)) 
+            }).collect();
+
+        self.selected_row = self.selected_row.min(filtered_packets.len().saturating_sub(1));
         
-        if packets.is_empty() && !BpfAccess::is_available() {
+        if filtered_packets.is_empty() && !BpfAccess::is_available() {
             let block = Block::default()
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded)
@@ -55,7 +85,7 @@ impl PacketUserInterface {
 
         let default_text_style = Style::default().fg(TEXT_COLOR_DARKER);
         let table_header = Row::new(header_cells).height(1);
-        let table_rows = packets.iter().enumerate()
+        let table_rows = filtered_packets.iter().enumerate()
             .skip(self.scroll_offset)
             .take(viewport)
             .map(|(index, packet)| {
@@ -88,6 +118,10 @@ impl PacketUserInterface {
                 ]).style(style)
             });
         let content_block = Block::default()
+            .title(match self.active_protocol_filter {
+                Some(ref protocol_filter) => format!("Packets [{}]", protocol_filter),
+                None => "Packets [ALL]".into(),
+            })
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .style(Style::default().fg(PRIMARY))
@@ -115,5 +149,21 @@ impl PacketUserInterface {
 
     pub fn previous_row(&mut self) {
         self.selected_row = self.selected_row.saturating_sub(1);
+    }
+
+    pub fn filter_by_tcp(&mut self) {
+        self.active_protocol_filter = Some(ProtocolFilter::Tcp);
+    }
+
+    pub fn filter_by_udp (&mut self) {
+        self.active_protocol_filter = Some(ProtocolFilter::Udp);
+    }
+
+    pub fn filter_by_icmp(&mut self) {
+        self.active_protocol_filter = Some(ProtocolFilter::Icmp);
+    }
+
+    pub fn remove_filter(&mut self) {
+        self.active_protocol_filter = None;
     }
 }

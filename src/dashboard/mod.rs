@@ -133,6 +133,14 @@ impl Dashboard {
                 match key_code {
                     KeyCode::Up => self.packet_ui.previous_row(),
                     KeyCode::Down => self.packet_ui.next_row(),
+                    KeyCode::Char('t') => self.packet_ui.filter_by_tcp(),
+                    KeyCode::Char('T') => self.packet_ui.filter_by_tcp(),
+                    KeyCode::Char('u') => self.packet_ui.filter_by_udp(),
+                    KeyCode::Char('U') => self.packet_ui.filter_by_udp(),
+                    KeyCode::Char('i') => self.packet_ui.filter_by_icmp(),
+                    KeyCode::Char('I') => self.packet_ui.filter_by_icmp(),
+                    KeyCode::Char('a') => self.packet_ui.remove_filter(),
+                    KeyCode::Char('A') => self.packet_ui.remove_filter(),
                     _ => {}
                 }
             }
