@@ -27,7 +27,7 @@ impl ProcessUserInterface {
             self.scroll_offset = self.selected_row.saturating_sub(viewport.saturating_sub(1));
         }
 
-        let header_cells = ["", "", "PID", "Process", "Connections", "Upload", "Download", ""]
+        let header_cells = ["", "", "Process", "PID", "Connections", "Upload", "Download", "CPU", "RAM", ""]
             .iter()
             .map(|header| {
                 let style = Style::default().fg(TEXT_COLOR).bold();
@@ -55,11 +55,13 @@ impl ProcessUserInterface {
                 Row::new([
                     Cell::from(""),
                     Cell::from(selected_indicator).style(default_style_text),
+                    Cell::from(process.process.to_string()).style(Style::default().fg(PRIMARY)),
                     Cell::from(process.pid.to_string()).style(default_style_text),
-                    Cell::from(process.process.to_string()).style(Style::default().fg(PRIMARY)), 
                     Cell::from(process.connections.to_string()).style(default_style_text),
                     Cell::from(process.upload.to_string()).style(Style::default().fg(GREEN)),
                     Cell::from(process.download.to_string()).style(Style::default().fg(YELLOW)),
+                    Cell::from(process.cpu.to_string()).style(Style::default().fg(YELLOW)),
+                    Cell::from(process.ram.to_string()).style(default_style_text),
                     Cell::from("")
                 ]).style(style)
             });
@@ -73,11 +75,13 @@ impl ProcessUserInterface {
         let table = Table::new(table_rows, [
             Constraint::Length(1),
             Constraint::Length(2),
-            Constraint::Length(15),
-            Constraint::Length(20),
-            Constraint::Length(20),
-            Constraint::Percentage(35),
-            Constraint::Percentage(35),
+            Constraint::Length(22),
+            Constraint::Length(8),
+            Constraint::Length(12),
+            Constraint::Length(14),
+            Constraint::Length(14),
+            Constraint::Length(8),
+            Constraint::Length(12),
             Constraint::Length(1)
         ])
         .header(table_header)
