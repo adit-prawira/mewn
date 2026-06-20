@@ -1,9 +1,14 @@
+use std::collections::HashMap;
+use std::time::{Duration, Instant};
+
 use ratatui::Frame;
-use ratatui::layout::{Constraint, Rect};
+use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Style};
-use ratatui::widgets::{Block, BorderType, Borders, Cell, Padding, Row, Table};
+use ratatui::symbols::Marker;
+use ratatui::widgets::{Axis, Block, BorderType, Borders, Cell, Chart, Dataset, GraphType, Padding, Row, Table};
 
 use crate::theme::{GREEN, PRIMARY, TEXT_COLOR, TEXT_COLOR_DARKER, YELLOW};
+use crate::utilities::bytes_format::BytesFormat;
 
 use super::resource::Process;
 
@@ -68,6 +73,11 @@ pub struct ProcessUserInterface {
     filter_mode: FilterMode,
     sort_type: SortType,
     sort_mode: SortMode,
+    cpu_percent_history: HashMap<u32, Vec<f64>>,
+    ram_size_history: HashMap<u32, Vec<f64>>,
+    upload_rate_history: HashMap<u32, Vec<f64>>,
+    download_rate_history: HashMap<u32, Vec<f64>>,
+    last_push_at: Option<Instant>,
 }
 
 impl ProcessUserInterface {
@@ -98,7 +108,33 @@ impl ProcessUserInterface {
         });
 
         self.selected_row = self.selected_row.min(filtered_processes.len().saturating_sub(1));
-        let viewport = (area.height as usize).saturating_sub(3).max(1);
+        let [table_area, graph_area] = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Fill(1), Constraint::Percentage(40)])
+            .areas::<2>(area);
+        let viewport = (table_area.height as usize).saturating_sub(3).max(1);
+        let should_push = self.last_push_at.is_none_or(|time| time.elapsed() >= Duration::from_secs(1));
+
+        if should_push {
+            for process in &filtered_processes {
+                let upload_rate = self.upload_rate_history.entry(process.pid).or_default();
+                upload_rate.truncate(59);
+                upload_rate.push(process.upload_rate as f64);
+
+                let download_rate = self.download_rate_history.entry(process.pid).or_default();
+                download_rate.truncate(59);
+                download_rate.push(process.download_rate as f64);
+
+                let cpu_percent = self.cpu_percent_history.entry(process.pid).or_default();
+                cpu_percent.truncate(59);
+                cpu_percent.push(process.cpu_percent);
+
+                let ram_size = self.ram_size_history.entry(process.pid).or_default();
+                ram_size.truncate(59);
+                ram_size.push(process.ram_bytes as f64);
+            }
+            self.last_push_at = Some(Instant::now());
+        }
 
         if self.selected_row < self.scroll_offset {
             self.scroll_offset = self.selected_row;
@@ -156,7 +192,7 @@ impl ProcessUserInterface {
             [
                 Constraint::Length(1),
                 Constraint::Length(2),
-                Constraint::Percentage(10),
+                Constraint::Percentage(20),
                 Constraint::Length(8),
                 Constraint::Length(12),
                 Constraint::Length(14),
@@ -169,7 +205,162 @@ impl ProcessUserInterface {
         .header(table_header)
         .block(content_block);
 
-        frame.render_widget(table, area);
+        frame.render_widget(table, table_area);
+
+        let Some(selected_process) = filtered_processes.get(self.selected_row) else {
+            return;
+        };
+
+        let [top_graph_area, bottom_graph_area] = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Fill(1), Constraint::Fill(1)])
+            .areas::<2>(graph_area);
+
+        let [upload_area, download_area] = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+            .areas::<2>(top_graph_area);
+
+        let [cpu_area, ram_area] = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+            .areas::<2>(bottom_graph_area);
+
+        let upload_data = self.upload_rate_history.get(&selected_process.pid).map(|datum| datum.as_slice()).unwrap_or(&[]);
+        let upload_points: Vec<(f64, f64)> = upload_data.iter().enumerate().map(|(index, &datum)| (index as f64, datum)).collect();
+        let upload_max = upload_data.iter().copied().reduce(f64::max).unwrap_or(0.0);
+        let upload_dataset = Dataset::default()
+            .graph_type(GraphType::Area)
+            .marker(Marker::Braille)
+            .style(Style::default().fg(GREEN))
+            .data(&upload_points);
+
+        let download_data = self.download_rate_history.get(&selected_process.pid).map(|datum| datum.as_slice()).unwrap_or(&[]);
+        let download_points: Vec<(f64, f64)> = download_data.iter().enumerate().map(|(index, &datum)| (index as f64, datum)).collect();
+        let download_max = download_data.iter().copied().reduce(f64::max).unwrap_or(0.0);
+        let download_dataset = Dataset::default()
+            .graph_type(GraphType::Area)
+            .marker(Marker::Braille)
+            .style(Style::default().fg(YELLOW))
+            .data(&download_points);
+
+        let cpu_percent_data = self.cpu_percent_history.get(&selected_process.pid).map(|datum| datum.as_slice()).unwrap_or(&[]);
+        let cpu_percent_points: Vec<(f64, f64)> = cpu_percent_data.iter().enumerate().map(|(index, &datum)| (index as f64, datum)).collect();
+        let cpu_percent_max = cpu_percent_data.iter().copied().reduce(f64::max).unwrap_or(0.0);
+        let cpu_percent_dataset = Dataset::default()
+            .graph_type(GraphType::Area)
+            .marker(Marker::Braille)
+            .style(Style::default().fg(Color::Cyan))
+            .data(&cpu_percent_points);
+
+        let ram_size_data = self.ram_size_history.get(&selected_process.pid).map(|datum| datum.as_slice()).unwrap_or(&[]);
+        let ram_size_points: Vec<(f64, f64)> = ram_size_data.iter().enumerate().map(|(index, &datum)| (index as f64, datum)).collect();
+        let ram_size_max = ram_size_data.iter().copied().reduce(f64::max).unwrap_or(0.0);
+        let ram_size_dataset = Dataset::default()
+            .graph_type(GraphType::Area)
+            .marker(Marker::Braille)
+            .style(Style::default().fg(Color::Magenta))
+            .data(&ram_size_points);
+
+        let upload_chart = Chart::new(vec![upload_dataset])
+            .block(
+                Block::default()
+                    .title(format!(
+                        "Upload Rate ({}) [max: {}]",
+                        selected_process.upload,
+                        BytesFormat::format_bytes_per_seconds(upload_max)
+                    ))
+                    .title_style(Style::default().fg(TEXT_COLOR))
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
+                    .style(Style::default().fg(PRIMARY)),
+            )
+            .x_axis(
+                Axis::default()
+                    .title("Seconds")
+                    .bounds([0.0, upload_points.len() as f64])
+                    .style(Style::default().fg(TEXT_COLOR_DARKER)),
+            )
+            .y_axis(
+                Axis::default()
+                    .title("Bytes/s")
+                    .bounds([0.0, upload_max.max(1.0)])
+                    .style(Style::default().fg(TEXT_COLOR_DARKER)),
+            );
+
+        let download_chart = Chart::new(vec![download_dataset])
+            .block(
+                Block::default()
+                    .title(format!(
+                        "Download Rate ({}) [max: {}]",
+                        selected_process.download,
+                        BytesFormat::format_bytes_per_seconds(download_max)
+                    ))
+                    .title_style(Style::default().fg(TEXT_COLOR))
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
+                    .style(Style::default().fg(PRIMARY)),
+            )
+            .x_axis(
+                Axis::default()
+                    .title("Seconds")
+                    .bounds([0.0, download_points.len() as f64])
+                    .style(Style::default().fg(TEXT_COLOR_DARKER)),
+            )
+            .y_axis(
+                Axis::default()
+                    .title("Bytes/s")
+                    .bounds([0.0, download_max.max(1.0)])
+                    .style(Style::default().fg(TEXT_COLOR_DARKER)),
+            );
+
+        let cpu_chart = Chart::new(vec![cpu_percent_dataset])
+            .block(
+                Block::default()
+                    .title(format!("CPU Usage ({:.2}%) [max: {:.2}%]", selected_process.cpu_percent, cpu_percent_max))
+                    .title_style(Style::default().fg(TEXT_COLOR))
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
+                    .style(Style::default().fg(PRIMARY)),
+            )
+            .x_axis(
+                Axis::default()
+                    .title("Seconds")
+                    .bounds([0.0, cpu_percent_points.len() as f64])
+                    .style(Style::default().fg(TEXT_COLOR_DARKER)),
+            )
+            .y_axis(
+                Axis::default()
+                    .title("%")
+                    .bounds([0.0, cpu_percent_max.max(1.0)])
+                    .style(Style::default().fg(TEXT_COLOR_DARKER)),
+            );
+
+        let ram_chart = Chart::new(vec![ram_size_dataset])
+            .block(
+                Block::default()
+                    .title(format!("RAM ({}) [max: {}]", selected_process.ram, BytesFormat::format_bytes(ram_size_max)))
+                    .title_style(Style::default().fg(TEXT_COLOR))
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
+                    .style(Style::default().fg(PRIMARY)),
+            )
+            .x_axis(
+                Axis::default()
+                    .title("Seconds")
+                    .bounds([0.0, ram_size_points.len() as f64])
+                    .style(Style::default().fg(TEXT_COLOR_DARKER)),
+            )
+            .y_axis(
+                Axis::default()
+                    .title("Bytes")
+                    .bounds([0.0, ram_size_max.max(1.0)])
+                    .style(Style::default().fg(TEXT_COLOR_DARKER)),
+            );
+        frame.render_widget(upload_chart, upload_area);
+        frame.render_widget(download_chart, download_area);
+        frame.render_widget(cpu_chart, cpu_area);
+        frame.render_widget(ram_chart, ram_area);
     }
 
     pub fn toggle_filter_mode(&mut self) {
