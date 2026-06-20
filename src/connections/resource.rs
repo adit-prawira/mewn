@@ -1,3 +1,4 @@
+#[derive(Clone)]
 pub struct Connection {
     pub pid: u32,
     pub process: String,
