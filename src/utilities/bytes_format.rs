@@ -2,7 +2,7 @@ const KB: u64 = 1024;
 const MB: u64 = KB * 1024;
 const GB: u64 = MB * 1024;
 
-pub struct BytesFormat; 
+pub struct BytesFormat;
 
 impl BytesFormat {
     pub fn format_bytes(bytes: f64) -> String {
@@ -10,7 +10,7 @@ impl BytesFormat {
     }
 
     pub fn format_bytes_per_seconds(bytes_per_seconds: f64) -> String {
-       Self::format_bytes_with_suffix(bytes_per_seconds, "/s") 
+        Self::format_bytes_with_suffix(bytes_per_seconds, "/s")
     }
 
     fn format_bytes_with_suffix(bytes: f64, suffix: &str) -> String {

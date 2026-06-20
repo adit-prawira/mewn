@@ -12,7 +12,7 @@ use mewn::processes::store::ProcessStore;
 use mewn::terminal::Terminal;
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()>{  
+async fn main() -> anyhow::Result<()> {
     let args: Vec<String> = std::env::args().collect();
 
     if args.contains(&"--setup".to_string()) {
@@ -26,7 +26,7 @@ async fn main() -> anyhow::Result<()>{
     if !BpfAccess::is_available() {
         eprintln!("{}", BpfAccess::help_message());
     }
-    
+
     let mut terminal = Terminal::init();
     let mut cat = Cat::default();
 
@@ -38,13 +38,10 @@ async fn main() -> anyhow::Result<()>{
     let shared_connections = connection_store.watch().await;
     let shared_bandwidth_statistics = bandwidth_store.watch().await;
     let shared_packets = packet_store.watch().await;
-    let shared_process = process_store.watch(
-        shared_connections.clone(),
-        shared_packets.clone()
-    ).await;
+    let shared_process = process_store.watch(shared_connections.clone(), shared_packets.clone()).await;
 
-    let mut dashboard = Dashboard::default(); 
-    
+    let mut dashboard = Dashboard::default();
+
     dashboard.set_shared_connections(shared_connections);
     dashboard.set_shared_bandwidth_statistics(shared_bandwidth_statistics);
     dashboard.set_shared_packets(shared_packets);
@@ -52,9 +49,10 @@ async fn main() -> anyhow::Result<()>{
 
     loop {
         cat.animate(&mut terminal);
-        if event::poll(Duration::from_millis(50)).expect("poll failed") 
-            && let Ok(Event::Key(_)) = event::read(){
-                break; 
+        if event::poll(Duration::from_millis(50)).expect("poll failed")
+            && let Ok(Event::Key(_)) = event::read()
+        {
+            break;
         }
 
         if cat.is_complete() {
@@ -65,7 +63,7 @@ async fn main() -> anyhow::Result<()>{
     terminal.clear_screen().expect("failed to clear screen");
 
     loop {
-        dashboard.render(&mut terminal); 
+        dashboard.render(&mut terminal);
 
         if event::poll(Duration::from_millis(50)).expect("poll failed")
             && let Ok(Event::Key(key)) = event::read()

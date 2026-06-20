@@ -1,5 +1,4 @@
-pub mod user_interface;
-pub mod store;
+mod netstat_stream;
 pub mod resource;
-mod netstat_stream; 
-
+pub mod store;
+pub mod user_interface;

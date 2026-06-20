@@ -6,5 +6,5 @@ pub struct BandwidthStatistic {
     pub upload_rate: u64,
     pub download: String,
     pub download_rate: u64,
-    pub total: String
+    pub total: String,
 }

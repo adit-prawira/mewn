@@ -8,5 +8,5 @@ pub struct Packet {
     pub source_port: u16,
     pub destination_port: u16,
     pub raw_size: u64,
-    pub dns_domain: Option<String>
+    pub dns_domain: Option<String>,
 }

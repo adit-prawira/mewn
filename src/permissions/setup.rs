@@ -23,7 +23,7 @@ use anyhow::Result;
  *
  *  Unsupported platforms receive a `bail!("Unsupported platform")` error.
  */
-pub struct PermissionSetup; 
+pub struct PermissionSetup;
 
 impl PermissionSetup {
     pub fn run_setup() -> Result<()> {
@@ -38,7 +38,7 @@ impl PermissionSetup {
                 println!("✓ Setup complete");
                 Self::verify_permissions();
                 Ok(())
-            },
+            }
             Err(e) => {
                 println!("✗ Setup failed: {}", e);
                 Self::print_troubleshooting();
@@ -91,7 +91,7 @@ impl PermissionSetup {
         } else {
             println!("✗ Permission verification failed");
             println!("  You may need to reboot or run with: sudo mewn");
-        }    
+        }
     }
 
     fn print_troubleshooting() {
@@ -166,5 +166,4 @@ impl PermissionSetup {
     fn teardown_platform() -> Result<()> {
         anyhow::bail!("Unsupported platform")
     }
-
 }

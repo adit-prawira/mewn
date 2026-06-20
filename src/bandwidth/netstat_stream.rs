@@ -7,11 +7,11 @@ use crate::bandwidth::resource::BandwidthStatistic;
 use crate::utilities::bytes_format::BytesFormat;
 
 struct NetstatEntry {
-    name: String, 
+    name: String,
     mtu: u64,
     address: String,
     ibytes: u64,
-    obytes: u64
+    obytes: u64,
 }
 
 static LAST_NETSTAT_ENTRIES_SNAPSHOT: Mutex<Option<(Instant, HashMap<String, NetstatEntry>)>> = Mutex::new(None);
@@ -42,85 +42,94 @@ static LAST_NETSTAT_ENTRIES_SNAPSHOT: Mutex<Option<(Instant, HashMap<String, Net
  */
 pub struct NetstatStream;
 
-impl NetstatStream { 
+impl NetstatStream {
     pub fn get_statistics() -> Vec<BandwidthStatistic> {
-        let output = Command::new("netstat")
-            .args(["-ib"])
-            .output();
+        let output = Command::new("netstat").args(["-ib"]).output();
 
-        let Ok(results) = output else {return Vec::new();};
-        if !results.status.success() {return Vec::new();};
+        let Ok(results) = output else {
+            return Vec::new();
+        };
+        if !results.status.success() {
+            return Vec::new();
+        };
 
         let stdout = String::from_utf8_lossy(&results.stdout);
         let netstat_entries = Self::parse_netstat_output(&stdout);
-        
+
         let mut last_netstat_entries_snapshot = LAST_NETSTAT_ENTRIES_SNAPSHOT.lock().unwrap();
         let now = Instant::now();
 
         let results = if let Some((last_time, last_netstat_entries_map)) = last_netstat_entries_snapshot.as_ref() {
             let elapsed = now.duration_since(*last_time).as_secs_f64();
             let has_elapsed = elapsed > 0.0;
-            if !has_elapsed {return Vec::new();};
+            if !has_elapsed {
+                return Vec::new();
+            };
 
             let mut statistics: Vec<BandwidthStatistic> = Vec::new();
             for current_entry in &netstat_entries {
-                let Some(last_entry) = last_netstat_entries_map.get(&current_entry.name) else {continue;};
-                let upload_rate = (current_entry.obytes.saturating_sub(last_entry.obytes) as f64) / elapsed; 
+                let Some(last_entry) = last_netstat_entries_map.get(&current_entry.name) else {
+                    continue;
+                };
+                let upload_rate = (current_entry.obytes.saturating_sub(last_entry.obytes) as f64) / elapsed;
                 let download_rate = (current_entry.ibytes.saturating_sub(last_entry.ibytes) as f64) / elapsed;
                 let maximum_transmission_unit = current_entry.mtu.saturating_sub(last_entry.mtu) as f64;
                 let total_rate = upload_rate + download_rate;
 
-                statistics.push(BandwidthStatistic { 
+                statistics.push(BandwidthStatistic {
                     name: last_entry.name.to_string(),
                     address: last_entry.address.to_string(),
                     maximum_transmission_unit: BytesFormat::format_bytes(maximum_transmission_unit),
-                    upload: BytesFormat::format_bytes_per_seconds(upload_rate), 
+                    upload: BytesFormat::format_bytes_per_seconds(upload_rate),
                     upload_rate: upload_rate as u64,
                     download: BytesFormat::format_bytes_per_seconds(download_rate),
                     download_rate: download_rate as u64,
-                    total: BytesFormat::format_bytes_per_seconds(total_rate) 
+                    total: BytesFormat::format_bytes_per_seconds(total_rate),
                 });
             }
             statistics
         } else {
-            let statistics: Vec<BandwidthStatistic> = netstat_entries.iter()
-                .map(|entry| BandwidthStatistic { 
-                    name: entry.name.to_string(), 
-                    address: entry.address.to_string(), 
-                    maximum_transmission_unit: BytesFormat::format_bytes(entry.mtu as f64), 
+            let statistics: Vec<BandwidthStatistic> = netstat_entries
+                .iter()
+                .map(|entry| BandwidthStatistic {
+                    name: entry.name.to_string(),
+                    address: entry.address.to_string(),
+                    maximum_transmission_unit: BytesFormat::format_bytes(entry.mtu as f64),
                     upload: BytesFormat::format_bytes_per_seconds(0.0),
                     upload_rate: 0,
-                    download: BytesFormat::format_bytes_per_seconds(0.0), 
+                    download: BytesFormat::format_bytes_per_seconds(0.0),
                     download_rate: 0,
-                    total: BytesFormat::format_bytes_per_seconds(0.0) 
+                    total: BytesFormat::format_bytes_per_seconds(0.0),
                 })
                 .collect();
             statistics
         };
 
-        let netstat_entries_map: HashMap<String, NetstatEntry> = netstat_entries.into_iter()
-            .map(|entry| (entry.name.to_string(), entry))
-            .collect();
+        let netstat_entries_map: HashMap<String, NetstatEntry> = netstat_entries.into_iter().map(|entry| (entry.name.to_string(), entry)).collect();
         *last_netstat_entries_snapshot = Some((now, netstat_entries_map));
 
-        results 
+        results
     }
 
     fn parse_netstat_output(output: &str) -> Vec<NetstatEntry> {
-        let mut lines = output.lines(); 
-        
-        let Some(header) = lines.next() else {return Vec::new();};
+        let mut lines = output.lines();
+
+        let Some(header) = lines.next() else {
+            return Vec::new();
+        };
         let header_parts: Vec<&str> = header.split_whitespace().collect();
 
         let total_bandwidth_parts = header_parts.len();
 
         let mut entries = Vec::new();
         for line in lines {
-            let Some(entry) = Self::parse_line(line, total_bandwidth_parts) else {continue;};
+            let Some(entry) = Self::parse_line(line, total_bandwidth_parts) else {
+                continue;
+            };
             entries.push(entry);
         }
 
-        entries 
+        entries
     }
 
     /*
@@ -139,24 +148,24 @@ impl NetstatStream {
         }
 
         let has_address = parts.len() > minimum_total_bandwidth_parts;
-        let (ibytes_index, obytes_index) = if has_address {
-            (6, 9)
-        } else {
-            (5, 8)
-        };
+        let (ibytes_index, obytes_index) = if has_address { (6, 9) } else { (5, 8) };
 
-        let network = parts[2]; 
-        if !network.starts_with("<Link#") {return None;};
+        let network = parts[2];
+        if !network.starts_with("<Link#") {
+            return None;
+        };
         let name = parts[0].to_string();
         let mtu = parts[1].parse::<u64>().ok()?;
-        let address = if has_address {
-            parts[3].to_string()
-        } else {
-            String::from("N/A")
-        };
+        let address = if has_address { parts[3].to_string() } else { String::from("N/A") };
         let ibytes = parts[ibytes_index].parse::<u64>().ok()?;
         let obytes = parts[obytes_index].parse::<u64>().ok()?;
-        
-        Some(NetstatEntry { name, mtu, address, ibytes, obytes })
-    }  
+
+        Some(NetstatEntry {
+            name,
+            mtu,
+            address,
+            ibytes,
+            obytes,
+        })
+    }
 }

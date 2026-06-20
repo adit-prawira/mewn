@@ -1,10 +1,10 @@
-pub mod terminal;
-pub mod cat;
-pub mod dashboard;
-pub mod connections;
-pub mod theme;
 pub mod bandwidth;
+pub mod cat;
+pub mod connections;
+pub mod dashboard;
 pub mod packet;
-pub mod utilities;
 pub mod permissions;
 pub mod processes;
+pub mod terminal;
+pub mod theme;
+pub mod utilities;

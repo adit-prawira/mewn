@@ -49,9 +49,9 @@ const PLIST_CONTENT: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
  *  Must be run with `sudo mewn --setup`. Without root, writing to
  *  /Library/LaunchDaemons/ will fail with a permission error.
  */
-pub struct MacosSetup; 
+pub struct MacosSetup;
 
-impl OsSetup for MacosSetup { 
+impl OsSetup for MacosSetup {
     fn run() -> Result<()> {
         let plist_path = Path::new(PLIST_PATH);
 
@@ -69,8 +69,7 @@ impl OsSetup for MacosSetup {
         }
 
         println!("--> Creating {}...", PLIST_PATH);
-        fs::write(PLIST_PATH, PLIST_CONTENT)
-            .with_context(|| format!("Failed to write {}", PLIST_PATH))?;
+        fs::write(PLIST_PATH, PLIST_CONTENT).with_context(|| format!("Failed to write {}", PLIST_PATH))?;
 
         println!("--> Loading launch daemon...");
         Self::load_plist()?;
@@ -80,22 +79,18 @@ impl OsSetup for MacosSetup {
 
     fn teardown() -> Result<()> {
         println!("--> Unloading launch daemon...");
-        let unload_status = Command::new("launchctl")
-            .args(["unload", PLIST_PATH])
-            .status()
-            .context("Failed to run launchctl unload")?;
-        
+        let unload_status = Command::new("launchctl").args(["unload", PLIST_PATH]).status().context("Failed to run launchctl unload")?;
+
         if !unload_status.success() {
             println!("--> Warning: unload failed (may not be loaded)");
         }
 
         if Path::new(PLIST_PATH).exists() {
             println!("--> Removing {}...", PLIST_PATH);
-            fs::remove_file(PLIST_PATH)
-                .with_context(|| format!("Failed to remove {}", PLIST_PATH))?;
+            fs::remove_file(PLIST_PATH).with_context(|| format!("Failed to remove {}", PLIST_PATH))?;
             println!("--> ✓ PList removed");
         }
-        Ok(()) 
+        Ok(())
     }
 }
 
@@ -106,14 +101,14 @@ impl MacosSetup {
             .args(["-c", "chmod go+rw /dev/bpf*"])
             .status()
             .context("Failed to run: sh -c 'chmod go+rw /dev/bpf*'")?;
-        
+
         if !status.success() {
             bail!("--> sh -c 'chmod go+rw /dev/bpf* ' failed");
         }
 
         Ok(())
     }
-    
+
     fn is_loaded() -> bool {
         // execute -> launchctl list
         Command::new("launchctl")
@@ -122,7 +117,7 @@ impl MacosSetup {
             .map(|line| String::from_utf8_lossy(&line.stdout).contains(PLIST_LABEL))
             .unwrap_or(false)
     }
-    
+
     fn load_plist() -> Result<()> {
         // execute -> launchctl load -w PLIST_PATH
         let status = Command::new("launchctl")
@@ -137,5 +132,3 @@ impl MacosSetup {
         Ok(())
     }
 }
-
-

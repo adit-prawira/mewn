@@ -3,30 +3,32 @@ use std::ops::Drop;
 
 use crossterm::execute;
 use crossterm::terminal::{Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode};
-use ratatui::{Frame, Terminal as RatatuiTerminal};
 use ratatui::prelude::CrosstermBackend;
+use ratatui::{Frame, Terminal as RatatuiTerminal};
 
 pub struct Terminal {
-    inner: RatatuiTerminal<CrosstermBackend<std::io::Stdout>>
+    inner: RatatuiTerminal<CrosstermBackend<std::io::Stdout>>,
 }
 
 impl Terminal {
     pub fn init() -> Self {
         enable_raw_mode().expect("failed to enable raw mode");
-        
-        let mut stdout = stdout(); 
-        
+
+        let mut stdout = stdout();
+
         execute!(stdout, EnterAlternateScreen).expect("failed to enter alternate screen");
-        
+
         let backend = CrosstermBackend::new(stdout);
-        
+
         Terminal {
-            inner: RatatuiTerminal::new(backend)
-                .expect("failed to create terminal")
+            inner: RatatuiTerminal::new(backend).expect("failed to create terminal"),
         }
     }
 
-    pub fn draw<F>(&mut self, f: F) where F: FnOnce(&mut Frame) {
+    pub fn draw<F>(&mut self, f: F)
+    where
+        F: FnOnce(&mut Frame),
+    {
         self.inner.draw(f).expect("failed to draw");
     }
 

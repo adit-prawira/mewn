@@ -26,10 +26,9 @@ static PREVIOUS_STATE: Mutex<Option<(Instant, PerProcessBandwidth)>> = Mutex::ne
  * First call returns an empty map (no baseline). Only PIDs with
  * non-zero deltas appear in the output.
  */
-pub struct BandwidthStream; 
+pub struct BandwidthStream;
 
 impl BandwidthStream {
-
     /*
      * The method will calculate upload and download rate of each process PID.
      * Thus, returning key value pairs of PID -> (upload_rate, download_rate)
@@ -42,28 +41,25 @@ impl BandwidthStream {
         let (previous_time, previous_cumulative) = match previous_state.take() {
             Some(state) => state,
             None => {
-                let mut cumulative: HashMap<u32, (u64, u64)> = HashMap::new(); 
+                let mut cumulative: HashMap<u32, (u64, u64)> = HashMap::new();
                 Self::accumulate(packets, port_pid_map, &mut cumulative);
                 *previous_state = Some((now, cumulative));
                 return HashMap::new();
-            },
+            }
         };
 
         let mut new_cumulative = previous_cumulative.clone();
         Self::accumulate(packets, port_pid_map, &mut new_cumulative);
 
         let elapsed = now.duration_since(previous_time).as_secs_f64().max(0.1);
-        let mut rates: PerProcessBandwidth = HashMap::new(); 
+        let mut rates: PerProcessBandwidth = HashMap::new();
 
         for (pid, (upload_size, download_size)) in &new_cumulative {
             let (previous_upload_size, previous_download_size) = previous_cumulative.get(pid).copied().unwrap_or((0, 0));
             let delta_upload_size = upload_size.saturating_sub(previous_upload_size);
             let delta_download_size = download_size.saturating_sub(previous_download_size);
             if delta_upload_size > 0 || delta_download_size > 0 {
-                rates.insert(*pid, (
-                    (delta_upload_size as f64 / elapsed) as u64,
-                    (delta_download_size as f64 / elapsed) as u64
-                ));
+                rates.insert(*pid, ((delta_upload_size as f64 / elapsed) as u64, (delta_download_size as f64 / elapsed) as u64));
             }
         }
 
@@ -76,14 +72,13 @@ impl BandwidthStream {
      */
     fn accumulate(packets: &[Packet], port_pid_map: HashMap<u16, u32>, cumulative: &mut HashMap<u32, (u64, u64)>) {
         for packet in packets {
-            
-            // Get packet size for upload from source port 
+            // Get packet size for upload from source port
             // as our machine is sending data
             if let Some(pid) = port_pid_map.get(&packet.source_port) {
                 cumulative.entry(*pid).or_default().0 += packet.raw_size;
             }
 
-            // get packet size for donwload from destination port 
+            // get packet size for donwload from destination port
             // as our machine is receiving data
             if let Some(pid) = port_pid_map.get(&packet.destination_port) {
                 cumulative.entry(*pid).or_default().1 += packet.raw_size;
@@ -92,9 +87,11 @@ impl BandwidthStream {
     }
 
     fn build_port_pid_map(connections: &[Connection]) -> HashMap<u16, u32> {
-        let mut map:HashMap<u16, u32> = HashMap::new();
+        let mut map: HashMap<u16, u32> = HashMap::new();
         for connection in connections {
-            let Some(port) = connection.local.rsplit(":").next().and_then(|port| port.parse::<u16>().ok()) else {continue;};
+            let Some(port) = connection.local.rsplit(":").next().and_then(|port| port.parse::<u16>().ok()) else {
+                continue;
+            };
             map.insert(port, connection.pid);
         }
         map

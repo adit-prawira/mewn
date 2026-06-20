@@ -1,15 +1,15 @@
+use crate::theme::{GREEN, PRIMARY, TEXT_COLOR, TEXT_COLOR_DARKER, YELLOW, YELLOW_DARKER};
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Rect};
 use ratatui::style::{Color, Style};
 use ratatui::widgets::{Block, BorderType, Borders, Cell, Padding, Row, Table};
-use crate::theme::{GREEN, PRIMARY, TEXT_COLOR, TEXT_COLOR_DARKER, YELLOW, YELLOW_DARKER};
 
 use super::resource::Connection;
 
 #[derive(Default)]
 pub struct ConnectionUserInterface {
     selected_row: usize,
-    scroll_offset: usize
+    scroll_offset: usize,
 }
 
 impl ConnectionUserInterface {
@@ -24,42 +24,35 @@ impl ConnectionUserInterface {
             self.scroll_offset = self.selected_row.saturating_sub(viewport.saturating_sub(1));
         }
 
-        let header_cells = ["", "", "PID", "Process",  "Protocol", "Local", "Remote", "State", ""]
-            .iter()
-            .map(|header| {
-                let style = Style::default().fg(TEXT_COLOR).bold();
-                Cell::from(*header).style(style)
-            });
+        let header_cells = ["", "", "PID", "Process", "Protocol", "Local", "Remote", "State", ""].iter().map(|header| {
+            let style = Style::default().fg(TEXT_COLOR).bold();
+            Cell::from(*header).style(style)
+        });
 
         let default_text_style = Style::default().fg(TEXT_COLOR_DARKER);
         let table_header = Row::new(header_cells).height(1);
-        let table_rows = connections.iter().enumerate()
-            .skip(self.scroll_offset)
-            .take(viewport)
-            .map(|(index, connection)| {
-                let is_selected = index == self.selected_row;
-                let selected_indicator = if is_selected {"▶".to_string()} else {String::from("")};
-                let style = if is_selected {
-                    Style::default()
-                        .fg(Color::Gray)
-                        .bg(Color::Rgb(132, 75, 92))
-                } else {
-                    Style::default()
-                        .fg(Color::Gray)
-                };
+        let table_rows = connections.iter().enumerate().skip(self.scroll_offset).take(viewport).map(|(index, connection)| {
+            let is_selected = index == self.selected_row;
+            let selected_indicator = if is_selected { "▶".to_string() } else { String::from("") };
+            let style = if is_selected {
+                Style::default().fg(Color::Gray).bg(Color::Rgb(132, 75, 92))
+            } else {
+                Style::default().fg(Color::Gray)
+            };
 
-                Row::new([
-                    Cell::from(""),
-                    Cell::from(selected_indicator).style(default_text_style),
-                    Cell::from(connection.pid.to_string()).style(default_text_style),
-                    Cell::from(connection.process.to_string()).style(Style::default().fg(GREEN)),
-                    Cell::from(connection.protocol.to_string()).style(default_text_style),
-                    Cell::from(connection.local.to_string()).style(Style::default().fg(YELLOW)),
-                    Cell::from(connection.remote.to_string()).style(Style::default().fg(YELLOW_DARKER)),
-                    Cell::from(connection.state.to_string()).style(default_text_style),
-                    Cell::from("")
-                ]).style(style)
-            });
+            Row::new([
+                Cell::from(""),
+                Cell::from(selected_indicator).style(default_text_style),
+                Cell::from(connection.pid.to_string()).style(default_text_style),
+                Cell::from(connection.process.to_string()).style(Style::default().fg(GREEN)),
+                Cell::from(connection.protocol.to_string()).style(default_text_style),
+                Cell::from(connection.local.to_string()).style(Style::default().fg(YELLOW)),
+                Cell::from(connection.remote.to_string()).style(Style::default().fg(YELLOW_DARKER)),
+                Cell::from(connection.state.to_string()).style(default_text_style),
+                Cell::from(""),
+            ])
+            .style(style)
+        });
 
         let content_block = Block::default()
             .borders(Borders::ALL)
@@ -67,17 +60,20 @@ impl ConnectionUserInterface {
             .style(Style::default().fg(PRIMARY))
             .padding(Padding::new(2, 2, 1, 1));
 
-        let table = Table::new(table_rows, [
-            Constraint::Length(1),
-            Constraint::Length(2),
-            Constraint::Length(6),
-            Constraint::Length(15),
-            Constraint::Length(15),
-            Constraint::Percentage(35),
-            Constraint::Percentage(35),
-            Constraint::Length(12),
-            Constraint::Length(1)
-        ])
+        let table = Table::new(
+            table_rows,
+            [
+                Constraint::Length(1),
+                Constraint::Length(2),
+                Constraint::Length(6),
+                Constraint::Length(15),
+                Constraint::Length(15),
+                Constraint::Percentage(35),
+                Constraint::Percentage(35),
+                Constraint::Length(12),
+                Constraint::Length(1),
+            ],
+        )
         .header(table_header)
         .block(content_block);
 

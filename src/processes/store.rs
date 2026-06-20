@@ -6,7 +6,7 @@ use crate::packet::resource::Packet;
 
 use super::bandwidth_stream::BandwidthStream;
 use super::resource::Process;
-use super::sysinfo_stream::{SysinfoStream};
+use super::sysinfo_stream::SysinfoStream;
 
 pub struct ProcessStore {
     shared_processes: Arc<Mutex<Vec<Process>>>,
@@ -14,7 +14,7 @@ pub struct ProcessStore {
 
 impl Default for ProcessStore {
     fn default() -> Self {
-        Self { 
+        Self {
             shared_processes: Arc::new(Mutex::new(Vec::new())),
         }
     }
@@ -47,5 +47,3 @@ impl ProcessStore {
         self.shared_processes.clone()
     }
 }
-
-

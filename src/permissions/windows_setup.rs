@@ -13,7 +13,7 @@ use crate::permissions::traits::OsSetup;
  *
  *  Teardown is a no-op on Windows.
  */
-pub struct WindowsSetup; 
+pub struct WindowsSetup;
 
 impl OsSetup for WindowsSetup {
     fn run() -> Result<()> {

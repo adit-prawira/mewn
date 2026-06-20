@@ -10,15 +10,15 @@ use crate::terminal::Terminal;
 
 struct BlinkConfig {
     start: Instant,
-    duration: Duration
+    duration: Duration,
 }
 struct AnimationConfig {
     start: Instant,
-    blink_config: BlinkConfig
+    blink_config: BlinkConfig,
 }
 
 pub struct Cat {
-   animation_config: AnimationConfig 
+    animation_config: AnimationConfig,
 }
 
 const CAT_ASCII_ART_EYES_OPENED: &[&str] = &[
@@ -144,13 +144,13 @@ const CAT_ASCII_ART_EYES_CLOSED: &[&str] = &[
 impl Default for Cat {
     fn default() -> Self {
         Self {
-            animation_config: AnimationConfig { 
-                start: Instant::now(), 
-                blink_config: BlinkConfig { 
-                    start: Instant::now(), 
-                    duration: Duration::from_millis(600)
-                }
-            }
+            animation_config: AnimationConfig {
+                start: Instant::now(),
+                blink_config: BlinkConfig {
+                    start: Instant::now(),
+                    duration: Duration::from_millis(600),
+                },
+            },
         }
     }
 }
@@ -174,15 +174,15 @@ impl Cat {
         } else {
             0
         };
-     
-        let y_offset = Self::float_offset(elapsed); 
+
+        let y_offset = Self::float_offset(elapsed);
         terminal.draw(|f| {
             Self::render(f, f.area(), blink_index, y_offset);
         });
     }
-                                
+
     fn render(frame: &mut Frame, area: Rect, blink_index: usize, float_offset: usize) {
-        let lines: Vec<Line> = Self::frame(blink_index, float_offset); 
+        let lines: Vec<Line> = Self::frame(blink_index, float_offset);
         let paragraph = Paragraph::new(lines).alignment(Alignment::Center);
         frame.render_widget(paragraph, area);
     }
@@ -192,19 +192,20 @@ impl Cat {
             0 => CAT_ASCII_ART_EYES_OPENED,
             1 => CAT_ASCII_ART_EYES_HALF_CLOSED,
             2 => CAT_ASCII_ART_EYES_ALMOST_CLOSED,
-            _ => CAT_ASCII_ART_EYES_CLOSED
+            _ => CAT_ASCII_ART_EYES_CLOSED,
         };
 
-        let paddings = (0..float_offset)
-            .map(|_| Line::from("")); 
+        let paddings = (0..float_offset).map(|_| Line::from(""));
 
-        let art_lines: Vec<Line> = art.iter()
+        let art_lines: Vec<Line> = art
+            .iter()
             .map(|&row| {
                 let style = Style::default().fg(Color::Rgb(203, 166, 247));
                 let span = Span::styled(row, style);
                 Line::from(span)
-            }).collect();
-       
+            })
+            .collect();
+
         paddings.chain(art_lines).collect()
     }
 
@@ -214,7 +215,7 @@ impl Cat {
             0 => 0,
             1 => 1,
             2 => 2,
-            _ => 1
+            _ => 1,
         }
     }
 }

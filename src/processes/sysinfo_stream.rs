@@ -19,48 +19,41 @@ use super::resource::Process;
  * separately.
  */
 pub struct SysinfoStream {
-    pub system: System
-} 
+    pub system: System,
+}
 
 impl SysinfoStream {
     pub fn new() -> Self {
         let mut system = System::new_all();
         system.refresh_all();
-        
-        Self {
-            system
-        }
+
+        Self { system }
     }
 
-    pub fn get_processes(
-        &mut self, 
-        connections: &[Connection],
-        per_process_bandwidth: &PerProcessBandwidth
-    ) -> Vec<Process> {
+    pub fn get_processes(&mut self, connections: &[Connection], per_process_bandwidth: &PerProcessBandwidth) -> Vec<Process> {
         self.system.refresh_all();
         let mut process_connections_map: HashMap<u32, usize> = HashMap::new();
-        
+
         // key value pairs of pid and their total connections
         for connection in connections {
             *process_connections_map.entry(connection.pid).or_default() += 1;
-        } 
+        }
 
-        let mut processes: Vec<Process> = self.system.processes()
+        let mut processes: Vec<Process> = self
+            .system
+            .processes()
             .iter()
             .map(|(pid, process)| {
                 let total_connection = process_connections_map.get(&pid.as_u32()).copied().unwrap_or(0);
-                let (upload_rate, download_rate) = per_process_bandwidth
-                    .get(&pid.as_u32())
-                    .copied()
-                    .unwrap_or((0, 0));
+                let (upload_rate, download_rate) = per_process_bandwidth.get(&pid.as_u32()).copied().unwrap_or((0, 0));
                 let cpu = process.cpu_usage();
                 let ram = process.memory();
-                
+
                 Process {
                     process: process.name().to_string_lossy().to_string(),
                     pid: pid.as_u32(),
                     connections: total_connection,
-                    upload: BytesFormat::format_bytes_per_seconds(upload_rate as f64), 
+                    upload: BytesFormat::format_bytes_per_seconds(upload_rate as f64),
                     upload_rate,
                     download: BytesFormat::format_bytes_per_seconds(download_rate as f64),
                     download_rate,
@@ -68,9 +61,10 @@ impl SysinfoStream {
                     cpu_percent: cpu as f64,
                     ram: BytesFormat::format_bytes(ram as f64),
                     ram_bytes: ram,
-                }               
-            }).collect();
+                }
+            })
+            .collect();
         processes.sort_by_key(|process| Reverse(process.ram_bytes));
         processes
-    }     
+    }
 }
