@@ -92,6 +92,15 @@ impl Dashboard {
         }
     }
 
+    pub fn previous_tab(&mut self) {
+        self.current_tab = match self.current_tab {
+            Tab::Connections => Tab::Process,
+            Tab::Process => Tab::Packet,
+            Tab::Packet => Tab::Bandwidth,
+            Tab::Bandwidth => Tab::Connections,
+        }
+    }
+
     fn render_tabs(&self, frame: &mut Frame, area: &Rect) {
         let tab_titles = vec!["Connections", "Bandwidth", "Packets", "Processes"];
         let selected = match self.current_tab {
@@ -161,6 +170,18 @@ impl Dashboard {
             Tab::Process => match key_code {
                 KeyCode::Up => self.process_ui.previous_row(),
                 KeyCode::Down => self.process_ui.next_row(),
+                KeyCode::Char('f') => self.process_ui.toggle_filter_mode(),
+                KeyCode::Char('F') => self.process_ui.toggle_filter_mode(),
+                KeyCode::Char('p') => self.process_ui.sort_by_pid(),
+                KeyCode::Char('P') => self.process_ui.sort_by_pid(),
+                KeyCode::Char('n') => self.process_ui.sort_by_process_name(),
+                KeyCode::Char('N') => self.process_ui.sort_by_process_name(),
+                KeyCode::Char('c') => self.process_ui.sort_by_connections(),
+                KeyCode::Char('C') => self.process_ui.sort_by_connections(),
+                KeyCode::Char('r') => self.process_ui.sort_by_cpu(),
+                KeyCode::Char('R') => self.process_ui.sort_by_cpu(),
+                KeyCode::Char('m') => self.process_ui.sort_by_ram(),
+                KeyCode::Char('M') => self.process_ui.sort_by_ram(),
                 _ => {}
             },
         };
