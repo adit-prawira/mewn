@@ -6,8 +6,18 @@ use sysinfo::System;
 use crate::connections::resource::Connection;
 use crate::utilities::bytes_format::BytesFormat;
 
+use super::bandwidth_stream::PerProcessBandwidth;
 use super::resource::Process;
 
+/*
+ * Stateful wrapper around sysinfo's System. Owns a single instance reused
+ * across ticks so cpu_usage() can compute accurate deltas (requires at
+ * least two refresh_all() calls on the same instance). On construction,
+ * runs an immediate warm-up refresh. Each tick merges sysinfo process
+ * data with lsof connection counts, cross-references per-PID, and sorts
+ * by RAM descending. Upload/download rates come from BandwidthStream
+ * separately.
+ */
 pub struct SysinfoStream {
     pub system: System
 } 
@@ -22,7 +32,11 @@ impl SysinfoStream {
         }
     }
 
-    pub fn get_processes(&mut self, connections: &[Connection]) -> Vec<Process> {
+    pub fn get_processes(
+        &mut self, 
+        connections: &[Connection],
+        per_process_bandwidth: &PerProcessBandwidth
+    ) -> Vec<Process> {
         self.system.refresh_all();
         let mut process_connections_map: HashMap<u32, usize> = HashMap::new();
         
@@ -35,6 +49,10 @@ impl SysinfoStream {
             .iter()
             .map(|(pid, process)| {
                 let total_connection = process_connections_map.get(&pid.as_u32()).copied().unwrap_or(0);
+                let (upload_rate, download_rate) = per_process_bandwidth
+                    .get(&pid.as_u32())
+                    .copied()
+                    .unwrap_or((0, 0));
                 let cpu = process.cpu_usage();
                 let ram = process.memory();
                 
@@ -42,10 +60,10 @@ impl SysinfoStream {
                     process: process.name().to_string_lossy().to_string(),
                     pid: pid.as_u32(),
                     connections: total_connection,
-                    upload: "-".into(),
-                    upload_rate: 0,
-                    download: "-".into(),
-                    download_rate: 0,
+                    upload: BytesFormat::format_bytes_per_seconds(upload_rate as f64), 
+                    upload_rate,
+                    download: BytesFormat::format_bytes_per_seconds(download_rate as f64),
+                    download_rate,
                     cpu: format!("{:.1}%", cpu),
                     cpu_percent: cpu as f64,
                     ram: BytesFormat::format_bytes(ram as f64),

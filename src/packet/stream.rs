@@ -14,6 +14,14 @@ const DNS_PORT: u16 = 53;
 static CAPTURE: Mutex<Option<Capture<Active>>> = Mutex::new(None);
 static CAPTURE_START: Mutex<Option<Instant>> = Mutex::new(None);
 
+/*
+ * Captures live network packets using pcap. On first call, discovers
+ * a non-loopback interface with a routable IPv4 address and opens a
+ * promiscuous capture. Each subsequent call collects packets for up
+ * to 100ms or 1000 packets, parsed with etherparse into transport
+ * (TCP/UDP/ICMP) and network (IPv4/IPv6/ARP) layers. DNS domain names
+ * are resolved from UDP port 53 payloads.
+ */
 pub struct PacketStream;
 
 impl PacketStream {
@@ -85,6 +93,9 @@ impl PacketStream {
                 source: format!("{}:{}", source_ip, source_port),
                 destination: format!("{}:{}", destination_ip, destination_port),
                 size: BytesFormat::format_bytes(packet.len() as f64),
+                source_port,
+                destination_port,
+                raw_size: packet.len() as u64,
                 dns_domain
             });
 
