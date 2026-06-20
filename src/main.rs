@@ -38,7 +38,7 @@ async fn main() -> anyhow::Result<()>{
     let shared_connections = connection_store.watch().await;
     let shared_bandwidth_statistics = bandwidth_store.watch().await;
     let shared_packets = packet_store.watch().await;
-    let shared_process = process_store.watch().await;
+    let shared_process = process_store.watch(shared_connections.clone()).await;
 
     let mut dashboard = Dashboard::default(); 
     

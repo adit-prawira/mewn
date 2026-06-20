@@ -75,7 +75,7 @@ impl ProcessUserInterface {
         let table = Table::new(table_rows, [
             Constraint::Length(1),
             Constraint::Length(2),
-            Constraint::Length(22),
+            Constraint::Percentage(10),
             Constraint::Length(8),
             Constraint::Length(12),
             Constraint::Length(14),
