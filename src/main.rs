@@ -72,6 +72,7 @@ async fn main() -> anyhow::Result<()> {
                 KeyCode::Char('q') => return Ok(()),
                 KeyCode::Char('Q') => return Ok(()),
                 KeyCode::Tab => dashboard.next_tab(),
+                KeyCode::BackTab => dashboard.previous_tab(),
                 _ => {
                     dashboard.handle_keys(key.code);
                 }
