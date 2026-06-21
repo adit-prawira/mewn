@@ -137,9 +137,12 @@ impl ProcessUserInterface {
         });
 
         self.selected_row = self.selected_row.min(filtered_processes.len().saturating_sub(1));
+
+        let is_wide = area.width > 100 && area.width as f32 / area.height.max(1) as f32 > 1.5;
+        let alignment = if is_wide { Direction::Horizontal } else { Direction::Vertical };
         let [table_area, graph_area] = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([Constraint::Fill(1), Constraint::Percentage(40)])
+            .direction(alignment)
+            .constraints([Constraint::Fill(1), Constraint::Percentage(45)])
             .areas::<2>(area);
         let viewport = (table_area.height as usize).saturating_sub(3).max(1);
         let should_push = self.last_push_at.is_none_or(|time| time.elapsed() >= Duration::from_secs(1));
@@ -254,13 +257,15 @@ impl ProcessUserInterface {
             .constraints([Constraint::Fill(1), Constraint::Fill(1)])
             .areas::<2>(graph_area);
 
+        let bandwidth_chart_alignment = if is_wide { Direction::Vertical } else { Direction::Horizontal };
         let [upload_area, download_area] = Layout::default()
-            .direction(Direction::Horizontal)
+            .direction(bandwidth_chart_alignment)
             .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
             .areas::<2>(top_graph_area);
 
+        let machine_chart_alignment = if is_wide { Direction::Vertical } else { Direction::Horizontal };
         let [cpu_area, ram_area] = Layout::default()
-            .direction(Direction::Horizontal)
+            .direction(machine_chart_alignment)
             .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
             .areas::<2>(bottom_graph_area);
 

@@ -26,9 +26,11 @@ impl BandwidthUserInterface {
     pub fn render(&mut self, frame: &mut Frame, area: Rect, bandwidth_statistics: &[BandwidthStatistic]) {
         self.selected_row = self.selected_row.min(bandwidth_statistics.len().saturating_sub(1));
 
+        let is_wide = area.width > 100 && area.width as f32 / area.height.max(1) as f32 > 1.5;
+        let alignment = if is_wide { Direction::Horizontal } else { Direction::Vertical };
         let [table_area, graph_area] = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([Constraint::Fill(1), Constraint::Percentage(40)])
+            .direction(alignment)
+            .constraints([Constraint::Fill(1), Constraint::Percentage(45)])
             .areas::<2>(area);
 
         let viewport = (table_area.height as usize).saturating_sub(3).max(1);
@@ -121,8 +123,9 @@ impl BandwidthUserInterface {
             return;
         };
 
+        let chart_alignment = if is_wide { Direction::Vertical } else { Direction::Horizontal };
         let [upload_area, download_area] = Layout::default()
-            .direction(Direction::Horizontal)
+            .direction(chart_alignment)
             .constraints([Constraint::Fill(1), Constraint::Fill(1)])
             .areas::<2>(graph_area);
 
