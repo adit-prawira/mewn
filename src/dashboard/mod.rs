@@ -182,6 +182,12 @@ impl Dashboard {
                 KeyCode::Char('R') => self.process_ui.sort_by_cpu(),
                 KeyCode::Char('m') => self.process_ui.sort_by_ram(),
                 KeyCode::Char('M') => self.process_ui.sort_by_ram(),
+                KeyCode::Char('s') => self.process_ui.toggle_auto_sort_on(),
+                KeyCode::Char('S') => self.process_ui.toggle_auto_sort_on(),
+                KeyCode::Char('u') => self.process_ui.auto_sort_by_upload_rate(),
+                KeyCode::Char('U') => self.process_ui.auto_sort_by_upload_rate(),
+                KeyCode::Char('d') => self.process_ui.auto_sort_by_download_rate(),
+                KeyCode::Char('D') => self.process_ui.auto_sort_by_download_rate(),
                 _ => {}
             },
         };
