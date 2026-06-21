@@ -41,7 +41,7 @@ pub struct Dashboard {
 impl Default for Dashboard {
     fn default() -> Self {
         Self {
-            current_tab: Tab::Connections,
+            current_tab: Tab::Process,
             shared_connections: Arc::new(Mutex::new(Vec::new())),
             connection_ui: ConnectionUserInterface::default(),
 
@@ -85,29 +85,29 @@ impl Dashboard {
 
     pub fn next_tab(&mut self) {
         self.current_tab = match self.current_tab {
-            Tab::Connections => Tab::Bandwidth,
-            Tab::Bandwidth => Tab::Packet,
+            Tab::Process => Tab::Bandwidth,
+            Tab::Bandwidth => Tab::Connections,
+            Tab::Connections => Tab::Packet,
             Tab::Packet => Tab::Process,
-            Tab::Process => Tab::Connections,
         }
     }
 
     pub fn previous_tab(&mut self) {
         self.current_tab = match self.current_tab {
-            Tab::Connections => Tab::Process,
+            Tab::Packet => Tab::Connections,
+            Tab::Connections => Tab::Bandwidth,
+            Tab::Bandwidth => Tab::Process,
             Tab::Process => Tab::Packet,
-            Tab::Packet => Tab::Bandwidth,
-            Tab::Bandwidth => Tab::Connections,
         }
     }
 
     fn render_tabs(&self, frame: &mut Frame, area: &Rect) {
-        let tab_titles = vec!["Connections", "Bandwidth", "Packets", "Processes"];
+        let tab_titles = vec!["Processes", "Bandwidth", "Connections", "Packet"];
         let selected = match self.current_tab {
-            Tab::Connections => 0,
+            Tab::Process => 0,
             Tab::Bandwidth => 1,
-            Tab::Packet => 2,
-            Tab::Process => 3,
+            Tab::Connections => 2,
+            Tab::Packet => 3,
         };
 
         let tabs = Tabs::new(tab_titles)
