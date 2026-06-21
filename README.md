@@ -9,14 +9,15 @@ A terminal-based network monitor with a cute cat mascot.
 - 📊 **Active connections** monitoring (TCP/UDP)
 - 📈 **Bandwidth tracking** with sparkline graphs
 - 📦 **Packet capture** with protocol parsing and DNS resolution
-- 🔍 **Process mapping** with per-process upload/download rates, CPU, RAM
+- 🔍 **Process mapping** with per-process upload/download rates, CPU, RAM, and real-time charts
 - 🌍 **Cross-platform** permission setup (macOS, Linux, Windows)
 
 ### Coming soon
 
 - 💾 Export to JSON/CSV
 - ⚙️ Configurable via `~/.config/mewn/config.toml`
-- 📉 CPU and bandwidth charts per selected process
+- 🖥️ Help screen with keybinding reference
+- 🎨 Color-coded protocol columns
 
 ## Installation
 
@@ -56,7 +57,7 @@ sudo mewn --teardown
    - **Connections** — Live TCP/UDP connections with process info
    - **Bandwidth** — Per-interface stats with upload/download charts
    - **Packets** — Live packet capture with protocol filters (requires `--setup`)
-   - **Processes** — Per-process CPU, RAM, and network rates with sort/filter controls
+   - **Processes** — Per-process CPU, RAM, and network rate charts with sort, filter, and auto-sort controls
 5. Press `q` to quit
 
 ## Keyboard Shortcuts
@@ -98,10 +99,13 @@ sudo mewn --teardown
 | `↑` / `↓` | Scroll rows |
 | `f` / `F` | Toggle All ↔ Active (networked only) |
 | `n` / `N` | Sort by process name |
+| `p` / `P` | Sort by PID |
 | `c` / `C` | Sort by connections |
 | `r` / `R` | Sort by CPU |
 | `m` / `M` | Sort by RAM |
-| `p` / `P` | Sort by PID |
+| `s` / `S` | Toggle auto-sort on/off |
+| `u` / `U` | Auto-sort by upload rate |
+| `d` / `D` | Auto-sort by download rate |
 
 ## Permission Setup
 
