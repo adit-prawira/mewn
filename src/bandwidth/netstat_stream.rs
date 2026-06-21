@@ -73,7 +73,7 @@ impl NetstatStream {
                 };
                 let upload_rate = (current_entry.obytes.saturating_sub(last_entry.obytes) as f64) / elapsed;
                 let download_rate = (current_entry.ibytes.saturating_sub(last_entry.ibytes) as f64) / elapsed;
-                let maximum_transmission_unit = current_entry.mtu.saturating_sub(last_entry.mtu) as f64;
+                let maximum_transmission_unit = current_entry.mtu as f64;
                 let total_rate = upload_rate + download_rate;
 
                 statistics.push(BandwidthStatistic {

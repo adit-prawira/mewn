@@ -127,15 +127,27 @@ impl BandwidthUserInterface {
             .areas::<2>(graph_area);
 
         let upload_data = self.upload_history.get(&selected_statistic.name).map(|datum| datum.as_slice()).unwrap_or(&[]);
-
         let download_data = self.download_history.get(&selected_statistic.name).map(|datum| datum.as_slice()).unwrap_or(&[]);
 
-        let upload_points: Vec<(f64, f64)> = upload_data.iter().enumerate().map(|(index, &datum)| (index as f64, datum as f64)).collect();
+        UploadChartComponent::render(upload_data, selected_statistic, frame, upload_area);
+        DownloadChartComponent::render(download_data, selected_statistic, frame, download_area);
+    }
 
-        let download_points: Vec<(f64, f64)> = download_data.iter().enumerate().map(|(index, &datum)| (index as f64, datum as f64)).collect();
-        let upload_max = upload_data.iter().max().copied().unwrap_or(0);
-        let download_max = download_data.iter().max().copied().unwrap_or(0);
+    pub fn next_row(&mut self) {
+        self.selected_row = self.selected_row.saturating_add(1);
+    }
 
+    pub fn previous_row(&mut self) {
+        self.selected_row = self.selected_row.saturating_sub(1);
+    }
+}
+
+struct UploadChartComponent;
+
+impl UploadChartComponent {
+    pub fn render(data: &[u64], statistic: &BandwidthStatistic, frame: &mut Frame, area: Rect) {
+        let upload_points: Vec<(f64, f64)> = data.iter().enumerate().map(|(index, &datum)| (index as f64, datum as f64)).collect();
+        let upload_max = data.iter().max().copied().unwrap_or(0);
         let upload_dataset = Dataset::default()
             .graph_type(GraphType::Area)
             .marker(Marker::Braille)
@@ -147,7 +159,7 @@ impl BandwidthUserInterface {
                 Block::default()
                     .title(format!(
                         "Upload Rate ({}) [max: {}]",
-                        selected_statistic.upload,
+                        statistic.upload,
                         BytesFormat::format_bytes_per_seconds(upload_max as f64)
                     ))
                     .title_style(Style::default().fg(TEXT_COLOR))
@@ -168,7 +180,16 @@ impl BandwidthUserInterface {
                     .style(Style::default().fg(TEXT_COLOR_DARKER)),
             );
 
-        frame.render_widget(upload_chart, upload_area);
+        frame.render_widget(upload_chart, area);
+    }
+}
+
+struct DownloadChartComponent;
+
+impl DownloadChartComponent {
+    pub fn render(data: &[u64], statistic: &BandwidthStatistic, frame: &mut Frame, area: Rect) {
+        let download_points: Vec<(f64, f64)> = data.iter().enumerate().map(|(index, &datum)| (index as f64, datum as f64)).collect();
+        let download_max = data.iter().max().copied().unwrap_or(0);
 
         let download_dataset = Dataset::default()
             .graph_type(GraphType::Area)
@@ -180,7 +201,7 @@ impl BandwidthUserInterface {
                 Block::default()
                     .title(format!(
                         "Download Rate ({}) [max: {}]",
-                        selected_statistic.download,
+                        statistic.download,
                         BytesFormat::format_bytes_per_seconds(download_max as f64)
                     ))
                     .title_style(Style::default().fg(TEXT_COLOR))
@@ -201,14 +222,6 @@ impl BandwidthUserInterface {
                     .style(Style::default().fg(TEXT_COLOR_DARKER)),
             );
 
-        frame.render_widget(download_chart, download_area);
-    }
-
-    pub fn next_row(&mut self) {
-        self.selected_row = self.selected_row.saturating_add(1);
-    }
-
-    pub fn previous_row(&mut self) {
-        self.selected_row = self.selected_row.saturating_sub(1);
+        frame.render_widget(download_chart, area);
     }
 }
