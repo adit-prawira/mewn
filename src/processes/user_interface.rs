@@ -42,9 +42,9 @@ impl SortType {
     pub fn as_display(&self) -> String {
         match self {
             SortType::Ram => "RAM".into(),
-            SortType::Process => "Name".into(),
+            SortType::Process => "NAME".into(),
             SortType::Pid => "PID".into(),
-            SortType::Connection => "Connection".into(),
+            SortType::Connection => "CONNECTION".into(),
             SortType::Cpu => "CPU".into(),
         }
     }
@@ -66,6 +66,22 @@ impl SortMode {
     }
 }
 
+#[derive(Default, PartialEq)]
+enum AutoSortType {
+    #[default]
+    Upload,
+    Download,
+}
+
+impl AutoSortType {
+    pub fn as_display(&self) -> String {
+        match self {
+            AutoSortType::Upload => "UPLOAD".into(),
+            AutoSortType::Download => "DOWNLOAD".into(),
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct ProcessUserInterface {
     selected_row: usize,
@@ -73,6 +89,9 @@ pub struct ProcessUserInterface {
     filter_mode: FilterMode,
     sort_type: SortType,
     sort_mode: SortMode,
+    auto_sort_type: AutoSortType,
+    auto_sort_mode: SortMode,
+    auto_sort_on: bool,
     cpu_percent_history: HashMap<u32, Vec<f64>>,
     ram_size_history: HashMap<u32, Vec<f64>>,
     upload_rate_history: HashMap<u32, Vec<f64>>,
@@ -93,6 +112,16 @@ impl ProcessUserInterface {
             .collect();
 
         filtered_processes.sort_by(|a, b| {
+            if self.auto_sort_on {
+                let ordering = match self.auto_sort_type {
+                    AutoSortType::Upload => a.upload_rate.cmp(&b.upload_rate),
+                    AutoSortType::Download => a.download_rate.cmp(&b.download_rate),
+                };
+                return match self.auto_sort_mode {
+                    SortMode::Desc => ordering.reverse(),
+                    SortMode::Asc => ordering,
+                };
+            }
             let ordering = match self.sort_type {
                 SortType::Ram => a.ram_bytes.cmp(&b.ram_bytes),
                 SortType::Process => a.process.cmp(&b.process),
@@ -176,12 +205,21 @@ impl ProcessUserInterface {
             .style(style)
         });
 
-        let sort_mode_display = self.sort_mode.as_display();
-        let sort_type_display = self.sort_type.as_display();
+        let (sort_mode_display, sort_type_display) = if self.auto_sort_on {
+            (self.auto_sort_mode.as_display(), self.auto_sort_type.as_display())
+        } else {
+            (self.sort_mode.as_display(), self.sort_type.as_display())
+        };
+
+        let auto_mode_display = if self.auto_sort_on { "AUTOMATIC".to_string() } else { "MANUAL".to_string() };
+
         let filter_mode_display = self.filter_mode.as_display();
 
         let content_block = Block::default()
-            .title(format!("Processes [{}] [{}{}]", filter_mode_display, sort_type_display, sort_mode_display))
+            .title(format!(
+                "Processes [{}] [{} {}] [{}]",
+                filter_mode_display, sort_type_display, sort_mode_display, auto_mode_display
+            ))
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .style(Style::default().fg(PRIMARY))
@@ -272,7 +310,34 @@ impl ProcessUserInterface {
         self.selected_row = self.selected_row.saturating_sub(1);
     }
 
+    pub fn auto_sort_by_upload_rate(&mut self) {
+        self.toggle_auto_sort_mode(AutoSortType::Upload, SortMode::Desc);
+    }
+
+    pub fn auto_sort_by_download_rate(&mut self) {
+        self.toggle_auto_sort_mode(AutoSortType::Download, SortMode::Desc);
+    }
+
+    pub fn toggle_auto_sort_on(&mut self) {
+        self.auto_sort_on = !self.auto_sort_on;
+    }
+
+    fn toggle_auto_sort_mode(&mut self, auto_sort_type: AutoSortType, default_sort_mode: SortMode) {
+        if self.auto_sort_type == auto_sort_type {
+            self.auto_sort_mode = match self.auto_sort_mode {
+                SortMode::Desc => SortMode::Asc,
+                SortMode::Asc => SortMode::Desc,
+            };
+        } else {
+            self.auto_sort_type = auto_sort_type;
+            self.auto_sort_mode = default_sort_mode;
+        }
+    }
+
     fn toggle_sort_mode(&mut self, sort_type: SortType, default_sort_mode: SortMode) {
+        if self.auto_sort_on {
+            self.auto_sort_on = false;
+        }
         if self.sort_type == sort_type {
             self.sort_mode = match self.sort_mode {
                 SortMode::Desc => SortMode::Asc,
