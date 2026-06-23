@@ -123,9 +123,8 @@ impl BandwidthUserInterface {
             return;
         };
 
-        let chart_alignment = if is_wide { Direction::Vertical } else { Direction::Horizontal };
         let [upload_area, download_area] = Layout::default()
-            .direction(chart_alignment)
+            .direction(Direction::Vertical)
             .constraints([Constraint::Fill(1), Constraint::Fill(1)])
             .areas::<2>(graph_area);
 
