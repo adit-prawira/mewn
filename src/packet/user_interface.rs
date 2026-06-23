@@ -7,7 +7,7 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, BorderType, Borders, Cell, Padding, Paragraph, Row, Table};
 
 use crate::permissions::bpf::BpfAccess;
-use crate::theme::{GREEN, PRIMARY, TEXT_COLOR, TEXT_COLOR_DARKER, YELLOW, YELLOW_DARKER};
+use crate::theme::{BLUE, GREEN, PRIMARY, RED, TEXT_COLOR, TEXT_COLOR_DARKER, YELLOW, YELLOW_DARKER};
 
 use super::resource::Packet;
 
@@ -98,11 +98,23 @@ impl PacketUserInterface {
             } else {
                 packet.destination.to_string()
             };
+
+            let protocol_style = match packet.protocol.as_str() {
+                "TCP" => Style::default().fg(GREEN),
+                "UDP" => {
+                    let has_dns = packet.dns_domain.is_some();
+                    if has_dns { Style::default().fg(YELLOW) } else { Style::default().fg(BLUE) }
+                }
+                "ICMPV4" => Style::default().fg(RED),
+                "ICMPV6" => Style::default().fg(RED),
+                _ => default_text_style,
+            };
+
             Row::new([
                 Cell::from(""),
                 Cell::from(selected_indicator).style(default_text_style),
                 Cell::from(packet.timestamp.to_string()).style(default_text_style),
-                Cell::from(packet.protocol.to_string()).style(Style::default().fg(GREEN)),
+                Cell::from(packet.protocol.to_string()).style(protocol_style),
                 Cell::from(packet.source.to_string()).style(Style::default().fg(YELLOW)),
                 Cell::from(destination).style(Style::default().fg(YELLOW_DARKER)),
                 Cell::from(packet.size.to_string()).style(default_text_style),
