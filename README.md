@@ -7,17 +7,16 @@ A terminal-based network monitor with a cute cat mascot.
 
 - 🐱 **Cat animation** on startup
 - 📊 **Active connections** monitoring (TCP/UDP)
-- 📈 **Bandwidth tracking** with sparkline graphs
+- 📈 **Bandwidth tracking** with area charts
 - 📦 **Packet capture** with protocol parsing and DNS resolution
 - 🔍 **Process mapping** with per-process upload/download rates, CPU, RAM, and real-time charts
 - 🌍 **Cross-platform** permission setup (macOS, Linux, Windows)
 
 ### Coming soon
 
+- 🖥️ Help screen with keybinding reference
 - 💾 Export to JSON/CSV
 - ⚙️ Configurable via `~/.config/mewn/config.toml`
-- 🖥️ Help screen with keybinding reference
-- 🎨 Color-coded protocol columns
 
 ## Installation
 
@@ -27,12 +26,6 @@ A terminal-based network monitor with a cute cat mascot.
 git clone https://github.com/adit-prawira/mewn.git
 cd mewn
 cargo build --release
-```
-
-### Install globally
-
-```bash
-cargo install --path .
 ```
 
 ## Usage
@@ -47,18 +40,6 @@ sudo mewn --setup
 # Remove packet capture permissions (requires sudo)
 sudo mewn --teardown
 ```
-
-### What happens when you run `mewn`
-
-1. If BPF permissions are missing, a warning is shown
-2. Terminal enters alternate screen
-3. Cat animation plays (2 seconds) — press any key to skip
-4. Dashboard appears with four tabs:
-   - **Connections** — Live TCP/UDP connections with process info
-   - **Bandwidth** — Per-interface stats with upload/download charts
-   - **Packets** — Live packet capture with protocol filters (requires `--setup`)
-   - **Processes** — Per-process CPU, RAM, and network rate charts with sort, filter, and auto-sort controls
-5. Press `q` to quit
 
 ## Keyboard Shortcuts
 
@@ -151,16 +132,20 @@ sudo mewn --teardown
 
 Install [Npcap](https://npcap.com), then run as Administrator. No CLI setup required.
 
-## Requirements
-
-- Rust 1.70+ (for building from source)
-- macOS: root/sudo for `--setup` and packet capture
-- Linux: root/sudo for `--setup`, `libcap2-bin`
-- Windows: Npcap, Administrator privileges
-
 ## Development
 
-This project is developed in vertical slices. See `PLANNING.md` and `phases/` for details.
+### First-time setup
+
+Before running `cargo run` on a new machine, install BPF permissions once:
+
+```bash
+cargo build && sudo ./target/debug/mewn --setup
+```
+
+> [!WARNING]  
+> Do **not** use `sudo cargo run -- --setup`. This runs the entire Rust toolchain as root, leaving root-owned files in `target/`. Subsequent `cargo run` as your normal user will fail with permission errors because cargo can't overwrite those files.
+
+After setup, development is just:
 
 ```bash
 cargo run
@@ -168,3 +153,7 @@ cargo build --release
 cargo test --all
 cargo clippy --all-targets -- -D warnings
 ```
+
+Re-run setup only if the LaunchDaemon gets removed, or if BPF permissions break after an OS update.
+
+
