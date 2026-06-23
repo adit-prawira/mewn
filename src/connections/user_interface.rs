@@ -1,4 +1,4 @@
-use crate::theme::{GREEN, PRIMARY, TEXT_COLOR, TEXT_COLOR_DARKER, YELLOW, YELLOW_DARKER};
+use crate::theme::{BLUE, GREEN, PRIMARY, TEXT_COLOR, TEXT_COLOR_DARKER, YELLOW, YELLOW_DARKER};
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Rect};
 use ratatui::style::{Color, Style};
@@ -39,13 +39,22 @@ impl ConnectionUserInterface {
             } else {
                 Style::default().fg(Color::Gray)
             };
+            let protocol_style = match connection.protocol.as_str() {
+                "TCP" => Style::default().fg(GREEN),
+                "UDP" => {
+                    let has_dns = connection.local.ends_with(":53") || connection.remote.ends_with(":53");
+
+                    if has_dns { Style::default().fg(YELLOW) } else { Style::default().fg(BLUE) }
+                }
+                _ => default_text_style,
+            };
 
             Row::new([
                 Cell::from(""),
                 Cell::from(selected_indicator).style(default_text_style),
                 Cell::from(connection.pid.to_string()).style(default_text_style),
                 Cell::from(connection.process.to_string()).style(Style::default().fg(GREEN)),
-                Cell::from(connection.protocol.to_string()).style(default_text_style),
+                Cell::from(connection.protocol.to_string()).style(protocol_style),
                 Cell::from(connection.local.to_string()).style(Style::default().fg(YELLOW)),
                 Cell::from(connection.remote.to_string()).style(Style::default().fg(YELLOW_DARKER)),
                 Cell::from(connection.state.to_string()).style(default_text_style),
