@@ -4,3 +4,4 @@ pub mod user_interface;
 
 mod bandwidth_stream;
 mod sysinfo_stream;
+mod table;

@@ -1,3 +1,4 @@
+pub mod atoms;
 pub mod bandwidth;
 pub mod cat;
 pub mod connections;

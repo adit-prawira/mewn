@@ -1,150 +1,64 @@
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
+use crossterm::event::KeyCode;
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Style};
 use ratatui::symbols::Marker;
-use ratatui::widgets::{Axis, Block, BorderType, Borders, Cell, Chart, Dataset, GraphType, Padding, Row, Table};
+use ratatui::widgets::{Axis, Block, BorderType, Borders, Chart, Dataset, GraphType};
 
+use crate::atoms::search_bar::SearchBarComponent;
 use crate::theme::{GREEN, PRIMARY, TEXT_COLOR, TEXT_COLOR_DARKER, YELLOW};
 use crate::utilities::bytes_format::BytesFormat;
 
 use super::resource::Process;
-
-#[derive(Default, PartialEq)]
-enum FilterMode {
-    #[default]
-    All,
-    Active,
-}
-
-impl FilterMode {
-    pub fn as_display(&self) -> String {
-        match self {
-            FilterMode::All => "ALL".into(),
-            FilterMode::Active => "ACTIVE".into(),
-        }
-    }
-}
-
-#[derive(Default, PartialEq)]
-enum SortType {
-    #[default]
-    Connection,
-    Ram,
-    Process,
-    Pid,
-    Cpu,
-}
-
-impl SortType {
-    pub fn as_display(&self) -> String {
-        match self {
-            SortType::Ram => "RAM".into(),
-            SortType::Process => "NAME".into(),
-            SortType::Pid => "PID".into(),
-            SortType::Connection => "CONNECTION".into(),
-            SortType::Cpu => "CPU".into(),
-        }
-    }
-}
-
-#[derive(Default, PartialEq)]
-enum SortMode {
-    #[default]
-    Desc,
-    Asc,
-}
-
-impl SortMode {
-    pub fn as_display(&self) -> String {
-        match self {
-            SortMode::Asc => "↑".into(),
-            SortMode::Desc => "↓".into(),
-        }
-    }
-}
-
-#[derive(Default, PartialEq)]
-enum AutoSortType {
-    #[default]
-    Upload,
-    Download,
-}
-
-impl AutoSortType {
-    pub fn as_display(&self) -> String {
-        match self {
-            AutoSortType::Upload => "UPLOAD".into(),
-            AutoSortType::Download => "DOWNLOAD".into(),
-        }
-    }
-}
+use super::table::TableComponent;
 
 #[derive(Default)]
 pub struct ProcessUserInterface {
-    selected_row: usize,
-    scroll_offset: usize,
-    filter_mode: FilterMode,
-    sort_type: SortType,
-    sort_mode: SortMode,
-    auto_sort_type: AutoSortType,
-    auto_sort_mode: SortMode,
-    auto_sort_on: bool,
     cpu_percent_history: HashMap<u32, Vec<f64>>,
     ram_size_history: HashMap<u32, Vec<f64>>,
     upload_rate_history: HashMap<u32, Vec<f64>>,
     download_rate_history: HashMap<u32, Vec<f64>>,
     last_push_at: Option<Instant>,
+    table_component: TableComponent,
+    search_bar_component: SearchBarComponent,
 }
 
 impl ProcessUserInterface {
     pub fn render(&mut self, frame: &mut Frame, area: Rect, processes: &[Process]) {
-        let mut filtered_processes: Vec<&Process> = processes
-            .iter()
-            .filter(|process| -> bool {
-                match self.filter_mode {
-                    FilterMode::All => true,
-                    FilterMode::Active => process.connections > 0,
-                }
-            })
-            .collect();
-
-        filtered_processes.sort_by(|a, b| {
-            if self.auto_sort_on {
-                let ordering = match self.auto_sort_type {
-                    AutoSortType::Upload => a.upload_rate.cmp(&b.upload_rate),
-                    AutoSortType::Download => a.download_rate.cmp(&b.download_rate),
-                };
-                return match self.auto_sort_mode {
-                    SortMode::Desc => ordering.reverse(),
-                    SortMode::Asc => ordering,
-                };
-            }
-            let ordering = match self.sort_type {
-                SortType::Ram => a.ram_bytes.cmp(&b.ram_bytes),
-                SortType::Process => a.process.cmp(&b.process),
-                SortType::Pid => a.pid.cmp(&b.pid),
-                SortType::Connection => a.connections.cmp(&b.connections),
-                SortType::Cpu => a.cpu_percent.total_cmp(&b.cpu_percent),
-            };
-
-            match self.sort_mode {
-                SortMode::Desc => ordering.reverse(),
-                SortMode::Asc => ordering,
-            }
-        });
-
-        self.selected_row = self.selected_row.min(filtered_processes.len().saturating_sub(1));
-
         let is_wide = area.width > 100 && area.width as f32 / area.height.max(1) as f32 > 1.5;
         let alignment = if is_wide { Direction::Horizontal } else { Direction::Vertical };
-        let [table_area, graph_area] = Layout::default()
+        let [main_area, graph_area] = Layout::default()
             .direction(alignment)
             .constraints([Constraint::Fill(1), Constraint::Percentage(45)])
             .areas::<2>(area);
-        let viewport = (table_area.height as usize).saturating_sub(3).max(1);
+
+        let [search_area, table_area] = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Length(3), Constraint::Fill(1)])
+            .areas::<2>(main_area);
+
+        let search_query = self.search_bar_component.get_search_query();
+        let is_search_query_empty = search_query.is_empty();
+
+        self.search_bar_component.render(frame, search_area);
+        let mut filtered_processes: Vec<&Process> = processes
+            .iter()
+            .filter(|process| -> bool {
+                let mode_filter_result = self.table_component.filter_by_mode(process);
+
+                if is_search_query_empty {
+                    return mode_filter_result;
+                }
+
+                mode_filter_result && (process.process.to_lowercase().contains(&search_query) || process.pid.to_string().to_lowercase().contains(&search_query))
+            })
+            .collect();
+
+        filtered_processes.sort_by(|a, b| self.table_component.compare(a, b));
+
         let should_push = self.last_push_at.is_none_or(|time| time.elapsed() >= Duration::from_secs(1));
 
         if should_push {
@@ -168,87 +82,8 @@ impl ProcessUserInterface {
             self.last_push_at = Some(Instant::now());
         }
 
-        if self.selected_row < self.scroll_offset {
-            self.scroll_offset = self.selected_row;
-        }
-
-        if self.selected_row >= self.scroll_offset + viewport {
-            self.scroll_offset = self.selected_row.saturating_sub(viewport.saturating_sub(1));
-        }
-
-        let header_cells = ["", "", "Process", "PID", "Connections", "Upload", "Download", "CPU", "RAM", ""].iter().map(|header| {
-            let style = Style::default().fg(TEXT_COLOR).bold();
-            Cell::from(*header).style(style)
-        });
-
-        let default_style_text = Style::default().fg(TEXT_COLOR_DARKER);
-        let table_header = Row::new(header_cells).height(1);
-
-        let table_rows = filtered_processes.iter().enumerate().skip(self.scroll_offset).take(viewport).map(|(index, process)| {
-            let is_selected = index == self.selected_row;
-            let selected_indicator = if is_selected { "▶".to_string() } else { String::from("") };
-            let style = if is_selected {
-                Style::default().fg(Color::Gray).bg(Color::Rgb(132, 75, 92))
-            } else {
-                Style::default().fg(Color::Gray)
-            };
-
-            Row::new([
-                Cell::from(""),
-                Cell::from(selected_indicator).style(default_style_text),
-                Cell::from(process.process.to_string()).style(Style::default().fg(PRIMARY)),
-                Cell::from(process.pid.to_string()).style(default_style_text),
-                Cell::from(process.connections.to_string()).style(default_style_text),
-                Cell::from(process.upload.to_string()).style(Style::default().fg(GREEN)),
-                Cell::from(process.download.to_string()).style(Style::default().fg(YELLOW)),
-                Cell::from(process.cpu.to_string()).style(Style::default().fg(YELLOW)),
-                Cell::from(process.ram.to_string()).style(default_style_text),
-                Cell::from(""),
-            ])
-            .style(style)
-        });
-
-        let (sort_mode_display, sort_type_display) = if self.auto_sort_on {
-            (self.auto_sort_mode.as_display(), self.auto_sort_type.as_display())
-        } else {
-            (self.sort_mode.as_display(), self.sort_type.as_display())
-        };
-
-        let auto_mode_display = if self.auto_sort_on { "AUTOMATIC".to_string() } else { "MANUAL".to_string() };
-
-        let filter_mode_display = self.filter_mode.as_display();
-
-        let content_block = Block::default()
-            .title(format!(
-                "Processes [{}] [{} {}] [{}]",
-                filter_mode_display, sort_type_display, sort_mode_display, auto_mode_display
-            ))
-            .borders(Borders::ALL)
-            .border_type(BorderType::Rounded)
-            .style(Style::default().fg(PRIMARY))
-            .padding(Padding::new(2, 2, 1, 1));
-
-        let table = Table::new(
-            table_rows,
-            [
-                Constraint::Length(1),
-                Constraint::Length(2),
-                Constraint::Percentage(20),
-                Constraint::Length(8),
-                Constraint::Length(12),
-                Constraint::Length(14),
-                Constraint::Length(14),
-                Constraint::Length(8),
-                Constraint::Length(12),
-                Constraint::Length(1),
-            ],
-        )
-        .header(table_header)
-        .block(content_block);
-
-        frame.render_widget(table, table_area);
-
-        let Some(selected_process) = filtered_processes.get(self.selected_row) else {
+        self.table_component.render(filtered_processes.clone(), frame, table_area);
+        let Some(selected_process) = filtered_processes.get(self.table_component.get_selected_row()) else {
             return;
         };
 
@@ -280,77 +115,46 @@ impl ProcessUserInterface {
         RamChartComponent::render(ram_size_data, selected_process, frame, ram_area);
     }
 
-    pub fn toggle_filter_mode(&mut self) {
-        self.filter_mode = match self.filter_mode {
-            FilterMode::All => FilterMode::Active,
-            FilterMode::Active => FilterMode::All,
+    pub fn is_searching(&self) -> bool {
+        self.search_bar_component.is_active()
+    }
+
+    pub fn handle_keys(&mut self, key_code: KeyCode) {
+        if self.search_bar_component.is_active() {
+            match key_code {
+                KeyCode::Esc => {
+                    self.search_bar_component.inactive();
+                    self.search_bar_component.reset();
+                    self.table_component.reset_selection();
+                }
+                KeyCode::Enter => {
+                    self.search_bar_component.inactive();
+                }
+                KeyCode::Backspace => {
+                    self.search_bar_component.remove_search_char();
+                    self.table_component.reset_selection();
+                }
+                KeyCode::Char(c) => {
+                    self.search_bar_component.add_search_char(c);
+                    self.table_component.reset_selection();
+                }
+                _ => {}
+            }
         }
-    }
-
-    pub fn sort_by_pid(&mut self) {
-        self.toggle_sort_mode(SortType::Pid, SortMode::Desc);
-    }
-
-    pub fn sort_by_process_name(&mut self) {
-        self.toggle_sort_mode(SortType::Process, SortMode::Desc);
-    }
-
-    pub fn sort_by_connections(&mut self) {
-        self.toggle_sort_mode(SortType::Connection, SortMode::Desc);
-    }
-
-    pub fn sort_by_cpu(&mut self) {
-        self.toggle_sort_mode(SortType::Cpu, SortMode::Desc);
-    }
-
-    pub fn sort_by_ram(&mut self) {
-        self.toggle_sort_mode(SortType::Ram, SortMode::Desc);
-    }
-
-    pub fn next_row(&mut self) {
-        self.selected_row = self.selected_row.saturating_add(1);
-    }
-
-    pub fn previous_row(&mut self) {
-        self.selected_row = self.selected_row.saturating_sub(1);
-    }
-
-    pub fn auto_sort_by_upload_rate(&mut self) {
-        self.toggle_auto_sort_mode(AutoSortType::Upload, SortMode::Desc);
-    }
-
-    pub fn auto_sort_by_download_rate(&mut self) {
-        self.toggle_auto_sort_mode(AutoSortType::Download, SortMode::Desc);
-    }
-
-    pub fn toggle_auto_sort_on(&mut self) {
-        self.auto_sort_on = !self.auto_sort_on;
-    }
-
-    fn toggle_auto_sort_mode(&mut self, auto_sort_type: AutoSortType, default_sort_mode: SortMode) {
-        if self.auto_sort_type == auto_sort_type {
-            self.auto_sort_mode = match self.auto_sort_mode {
-                SortMode::Desc => SortMode::Asc,
-                SortMode::Asc => SortMode::Desc,
-            };
-        } else {
-            self.auto_sort_type = auto_sort_type;
-            self.auto_sort_mode = default_sort_mode;
-        }
-    }
-
-    fn toggle_sort_mode(&mut self, sort_type: SortType, default_sort_mode: SortMode) {
-        if self.auto_sort_on {
-            self.auto_sort_on = false;
-        }
-        if self.sort_type == sort_type {
-            self.sort_mode = match self.sort_mode {
-                SortMode::Desc => SortMode::Asc,
-                SortMode::Asc => SortMode::Desc,
-            };
-        } else {
-            self.sort_type = sort_type;
-            self.sort_mode = default_sort_mode;
+        match key_code {
+            KeyCode::Up => self.table_component.previous_row(),
+            KeyCode::Down => self.table_component.next_row(),
+            KeyCode::Char('f') | KeyCode::Char('F') => self.table_component.toggle_filter_mode(),
+            KeyCode::Char('p') | KeyCode::Char('P') => self.table_component.sort_by_pid(),
+            KeyCode::Char('n') | KeyCode::Char('N') => self.table_component.sort_by_process_name(),
+            KeyCode::Char('c') | KeyCode::Char('C') => self.table_component.sort_by_connections(),
+            KeyCode::Char('r') | KeyCode::Char('R') => self.table_component.sort_by_cpu(),
+            KeyCode::Char('m') | KeyCode::Char('M') => self.table_component.sort_by_ram(),
+            KeyCode::Char('s') | KeyCode::Char('S') => self.table_component.toggle_auto_sort_on(),
+            KeyCode::Char('u') | KeyCode::Char('U') => self.table_component.auto_sort_by_upload_rate(),
+            KeyCode::Char('d') | KeyCode::Char('D') => self.table_component.auto_sort_by_download_rate(),
+            KeyCode::Char('/') => self.search_bar_component.active(),
+            _ => {}
         }
     }
 }
