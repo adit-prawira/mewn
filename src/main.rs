@@ -69,8 +69,7 @@ async fn main() -> anyhow::Result<()> {
             && let Ok(Event::Key(key)) = event::read()
         {
             match key.code {
-                KeyCode::Char('q') => return Ok(()),
-                KeyCode::Char('Q') => return Ok(()),
+                KeyCode::Char('q') | KeyCode::Char('Q') if !dashboard.is_capturing_keys() => return Ok(()),
                 KeyCode::Tab => dashboard.next_tab(),
                 KeyCode::BackTab => dashboard.previous_tab(),
                 _ => {
