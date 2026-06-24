@@ -144,11 +144,7 @@ impl Dashboard {
 
     pub fn handle_keys(&mut self, key_code: KeyCode) {
         match self.current_tab {
-            Tab::Connections => match key_code {
-                KeyCode::Up => self.connection_ui.previous_row(),
-                KeyCode::Down => self.connection_ui.next_row(),
-                _ => {}
-            },
+            Tab::Connections => self.connection_ui.handle_keys(key_code),
             Tab::Bandwidth => match key_code {
                 KeyCode::Up => self.bandwidth_ui.previous_row(),
                 KeyCode::Down => self.bandwidth_ui.next_row(),
@@ -191,5 +187,9 @@ impl Dashboard {
                 _ => {}
             },
         };
+    }
+
+    pub fn is_capturing_keys(&mut self) -> bool {
+        matches!(self.current_tab, Tab::Connections) && self.connection_ui.is_searching()
     }
 }
