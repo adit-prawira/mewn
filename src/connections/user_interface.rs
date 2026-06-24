@@ -2,8 +2,9 @@ use crossterm::event::KeyCode;
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 
+use crate::atoms::search_bar::SearchBarComponent;
+
 use super::resource::Connection;
-use super::search_bar::SearchBarComponent;
 use super::table::TableComponent;
 
 #[derive(Default)]
@@ -73,9 +74,7 @@ impl ConnectionUserInterface {
         match key_code {
             KeyCode::Up => self.table_component.previous_row(),
             KeyCode::Down => self.table_component.next_row(),
-            KeyCode::Char('/') => {
-                self.search_bar_component.active();
-            }
+            KeyCode::Char('/') => self.search_bar_component.active(),
             _ => {}
         }
     }

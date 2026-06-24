@@ -163,33 +163,15 @@ impl Dashboard {
                 KeyCode::Char('A') => self.packet_ui.remove_filter(),
                 _ => {}
             },
-            Tab::Process => match key_code {
-                KeyCode::Up => self.process_ui.previous_row(),
-                KeyCode::Down => self.process_ui.next_row(),
-                KeyCode::Char('f') => self.process_ui.toggle_filter_mode(),
-                KeyCode::Char('F') => self.process_ui.toggle_filter_mode(),
-                KeyCode::Char('p') => self.process_ui.sort_by_pid(),
-                KeyCode::Char('P') => self.process_ui.sort_by_pid(),
-                KeyCode::Char('n') => self.process_ui.sort_by_process_name(),
-                KeyCode::Char('N') => self.process_ui.sort_by_process_name(),
-                KeyCode::Char('c') => self.process_ui.sort_by_connections(),
-                KeyCode::Char('C') => self.process_ui.sort_by_connections(),
-                KeyCode::Char('r') => self.process_ui.sort_by_cpu(),
-                KeyCode::Char('R') => self.process_ui.sort_by_cpu(),
-                KeyCode::Char('m') => self.process_ui.sort_by_ram(),
-                KeyCode::Char('M') => self.process_ui.sort_by_ram(),
-                KeyCode::Char('s') => self.process_ui.toggle_auto_sort_on(),
-                KeyCode::Char('S') => self.process_ui.toggle_auto_sort_on(),
-                KeyCode::Char('u') => self.process_ui.auto_sort_by_upload_rate(),
-                KeyCode::Char('U') => self.process_ui.auto_sort_by_upload_rate(),
-                KeyCode::Char('d') => self.process_ui.auto_sort_by_download_rate(),
-                KeyCode::Char('D') => self.process_ui.auto_sort_by_download_rate(),
-                _ => {}
-            },
+            Tab::Process => self.process_ui.handle_keys(key_code),
         };
     }
 
     pub fn is_capturing_keys(&mut self) -> bool {
-        matches!(self.current_tab, Tab::Connections) && self.connection_ui.is_searching()
+        match self.current_tab {
+            Tab::Connections => self.connection_ui.is_searching(),
+            Tab::Process => self.process_ui.is_searching(),
+            _ => false,
+        }
     }
 }
