@@ -145,11 +145,7 @@ impl Dashboard {
     pub fn handle_keys(&mut self, key_code: KeyCode) {
         match self.current_tab {
             Tab::Connections => self.connection_ui.handle_keys(key_code),
-            Tab::Bandwidth => match key_code {
-                KeyCode::Up => self.bandwidth_ui.previous_row(),
-                KeyCode::Down => self.bandwidth_ui.next_row(),
-                _ => {}
-            },
+            Tab::Bandwidth => self.bandwidth_ui.handle_keys(key_code),
             Tab::Packet => match key_code {
                 KeyCode::Up => self.packet_ui.previous_row(),
                 KeyCode::Down => self.packet_ui.next_row(),
@@ -171,6 +167,7 @@ impl Dashboard {
         match self.current_tab {
             Tab::Connections => self.connection_ui.is_searching(),
             Tab::Process => self.process_ui.is_searching(),
+            Tab::Bandwidth => self.bandwidth_ui.is_searching(),
             _ => false,
         }
     }
