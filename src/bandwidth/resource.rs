@@ -1,3 +1,6 @@
+use serde::Serialize;
+
+#[derive(Clone, Serialize)]
 pub struct BandwidthStatistic {
     pub name: String,
     pub address: String,
