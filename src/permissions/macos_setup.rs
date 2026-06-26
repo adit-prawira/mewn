@@ -132,3 +132,23 @@ impl MacosSetup {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn given_plist_content_then_starts_with_xml_declaration() {
+        assert!(PLIST_CONTENT.trim_start().starts_with("<?xml"), "plist must start with XML declaration");
+    }
+
+    #[test]
+    fn given_plist_content_then_contains_label() {
+        assert!(PLIST_CONTENT.contains(PLIST_LABEL), "plist must contain the label");
+    }
+
+    #[test]
+    fn given_plist_content_then_contains_chmod_command() {
+        assert!(PLIST_CONTENT.contains("chmod go+rw /dev/bpf*"), "plist must restore BPF permissions");
+    }
+}

@@ -56,20 +56,20 @@ sudo mewn teardown
 sudo mewn --teardown
 
 # Export data (2s capture, then write to file)
-mewn export connections --format json --output out.json
-mewn export bandwidth   -f csv -o out.csv
-mewn export packets     -f json -o out.json
-mewn export processes   -f csv -o out.csv
+mewn export connection --format json --output out.json
+mewn export bandwidth  -f csv -o out.csv
+mewn export packet     -f json -o out.json
+mewn export process    -f csv -o out.csv
 ```
 
 ### Export domains
 
 | Domain | Description |
 |--------|-------------|
-| `connections` | Active TCP/UDP connections (PID, process, local, remote, state, protocol) |
+| `connection` | Active TCP/UDP connections (PID, process, local, remote, state, protocol) |
 | `bandwidth` | Per-interface upload/download rates (name, address, MTU, rates) |
-| `packets` | Captured packet headers (timestamp, protocol, source, destination, size) |
-| `processes` | Per-process stats (process, PID, connections, upload, download, CPU, RAM) |
+| `packet` | Captured packet headers (timestamp, protocol, source, destination, size) |
+| `process` | Per-process stats (process, PID, connections, upload, download, CPU, RAM) |
 
 ### Export formats
 

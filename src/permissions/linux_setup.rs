@@ -105,3 +105,18 @@ impl LinuxSetup {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn given_existing_command_then_command_exists_returns_true() {
+        assert!(LinuxSetup::command_exists("which"), "which must exist on all platforms");
+    }
+
+    #[test]
+    fn given_nonexistent_command_then_command_exists_returns_false() {
+        assert!(!LinuxSetup::command_exists("nonexistent_cmd_xyz_12345"));
+    }
+}
