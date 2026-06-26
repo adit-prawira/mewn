@@ -97,3 +97,87 @@ impl BandwidthStream {
         map
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_connection(pid: u32, local: &str) -> Connection {
+        Connection {
+            pid,
+            process: "test".into(),
+            local: local.into(),
+            remote: "".into(),
+            state: "".into(),
+            protocol: "TCP".into(),
+        }
+    }
+
+    fn make_packet(source_port: u16, destination_port: u16, raw_size: u64) -> Packet {
+        Packet {
+            timestamp: "".into(),
+            protocol: "TCP".into(),
+            source: "".into(),
+            destination: "".into(),
+            size: "".into(),
+            source_port,
+            destination_port,
+            raw_size,
+            dns_domain: None,
+        }
+    }
+
+    #[test]
+    fn given_connections_with_ports_then_build_port_pid_map_maps_port_to_pid() {
+        let connections = vec![make_connection(42, "192.168.1.5:8080"), make_connection(99, "127.0.0.1:443")];
+        let map = BandwidthStream::build_port_pid_map(&connections);
+        assert_eq!(map.get(&8080), Some(&42));
+        assert_eq!(map.get(&443), Some(&99));
+        assert_eq!(map.len(), 2);
+    }
+
+    #[test]
+    fn given_empty_connections_then_build_port_pid_map_returns_empty() {
+        let map = BandwidthStream::build_port_pid_map(&[]);
+        assert!(map.is_empty());
+    }
+
+    #[test]
+    fn given_connection_without_port_in_local_then_build_port_pid_map_skips_it() {
+        let connections = vec![make_connection(42, "no-port-here"), make_connection(99, "127.0.0.1:443")];
+        let map = BandwidthStream::build_port_pid_map(&connections);
+        assert_eq!(map.len(), 1);
+        assert_eq!(map.get(&443), Some(&99));
+    }
+
+    #[test]
+    fn given_packets_then_accumulate_sums_upload_and_download_by_pid() {
+        let port_pid_map = HashMap::from([(8080, 42)]);
+        let packets = vec![
+            make_packet(8080, 9999, 100), // source=8080 → upload for PID 42
+            make_packet(9999, 8080, 200), // dest=8080 → download for PID 42
+        ];
+        let mut cumulative: HashMap<u32, (u64, u64)> = HashMap::new();
+        BandwidthStream::accumulate(&packets, port_pid_map, &mut cumulative);
+        let (up, down) = cumulative.get(&42).unwrap();
+        assert_eq!(*up, 100);
+        assert_eq!(*down, 200);
+    }
+
+    #[test]
+    fn given_empty_packets_then_accumulate_does_not_mutate() {
+        let port_pid_map = HashMap::from([(8080, 42)]);
+        let mut cumulative: HashMap<u32, (u64, u64)> = HashMap::new();
+        BandwidthStream::accumulate(&[], port_pid_map, &mut cumulative);
+        assert!(cumulative.is_empty());
+    }
+
+    #[test]
+    fn given_packet_from_unknown_port_then_accumulate_ignores_it() {
+        let port_pid_map = HashMap::from([(8080, 42)]);
+        let packets = vec![make_packet(9999, 7777, 100)]; // neither port in map
+        let mut cumulative: HashMap<u32, (u64, u64)> = HashMap::new();
+        BandwidthStream::accumulate(&packets, port_pid_map, &mut cumulative);
+        assert!(cumulative.is_empty());
+    }
+}

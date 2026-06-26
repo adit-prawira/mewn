@@ -149,3 +149,85 @@ impl PacketStream {
         Some(labels.join("."))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn given_dns_query_for_google_com_then_returns_domain() {
+        let payload: &[u8] = &[
+            0x12, 0x34, // Transaction ID
+            0x01, 0x00, // Flags (standard query)
+            0x00, 0x01, // QDCOUNT = 1
+            0x00, 0x00, // ANCOUNT = 0
+            0x00, 0x00, // NSCOUNT = 0
+            0x00, 0x00, // ARCOUNT = 0
+            0x06, b'g', b'o', b'o', b'g', b'l', b'e', // "google"
+            0x03, b'c', b'o', b'm', // "com"
+            0x00, // null terminator
+            0x00, 0x01, // QTYPE = A
+            0x00, 0x01, // QCLASS = IN
+        ];
+        let domain = PacketStream::parsed_dns_domain(payload);
+        assert_eq!(domain, Some("google.com".to_string()));
+    }
+
+    #[test]
+    fn given_short_payload_then_parsed_dns_domain_returns_none() {
+        let payload: &[u8] = &[0x00; 10];
+        assert_eq!(PacketStream::parsed_dns_domain(payload), None);
+    }
+
+    #[test]
+    fn given_zero_qdcount_then_parsed_dns_domain_returns_none() {
+        let payload: &[u8] = &[
+            0x12, 0x34, // Transaction ID
+            0x01, 0x00, // Flags
+            0x00, 0x00, // QDCOUNT = 0
+            0x00, 0x00, // ANCOUNT
+            0x00, 0x00, // NSCOUNT
+            0x00, 0x00, // ARCOUNT
+        ];
+        assert_eq!(PacketStream::parsed_dns_domain(payload), None);
+    }
+
+    #[test]
+    fn given_dns_query_with_subdomain_then_returns_full_domain() {
+        let payload: &[u8] = &[
+            0x12, 0x34, // Transaction ID
+            0x01, 0x00, // Flags
+            0x00, 0x01, // QDCOUNT = 1
+            0x00, 0x00, // ANCOUNT
+            0x00, 0x00, // NSCOUNT
+            0x00, 0x00, // ARCOUNT
+            0x03, b'w', b'w', b'w', // "www"
+            0x07, b'e', b'x', b'a', b'm', b'p', b'l', b'e', // "example"
+            0x03, b'c', b'o', b'm', // "com"
+            0x00, // null terminator
+            0x00, 0x01, // QTYPE
+            0x00, 0x01, // QCLASS
+        ];
+        let domain = PacketStream::parsed_dns_domain(payload);
+        assert_eq!(domain, Some("www.example.com".to_string()));
+    }
+
+    #[test]
+    fn given_compressed_label_pointer_then_parsed_dns_domain_stops() {
+        let payload: &[u8] = &[
+            0x12, 0x34, // Transaction ID
+            0x01, 0x00, // Flags
+            0x00, 0x01, // QDCOUNT = 1
+            0x00, 0x00, // ANCOUNT
+            0x00, 0x00, // NSCOUNT
+            0x00, 0x00, // ARCOUNT
+            0x03, b'w', b'w', b'w', // "www"
+            0xc0, 0x0c, // Compressed pointer (0xC0 byte)
+            0x00, 0x01, // QTYPE
+            0x00, 0x01, // QCLASS
+        ];
+        // Parses "www" then hits compressed pointer and stops
+        let domain = PacketStream::parsed_dns_domain(payload);
+        assert_eq!(domain, Some("www".to_string()));
+    }
+}
