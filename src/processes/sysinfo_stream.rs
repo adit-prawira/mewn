@@ -68,3 +68,26 @@ impl SysinfoStream {
         processes
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn given_new_sysinfo_stream_then_constructs_without_panicking() {
+        let _stream = SysinfoStream::new();
+    }
+
+    #[test]
+    fn given_empty_connections_and_bandwidth_then_get_processes_returns_without_panicking() {
+        let mut stream = SysinfoStream::new();
+        let empty_bandwidth: HashMap<u32, (u64, u64)> = HashMap::new();
+        let processes = stream.get_processes(&[], &empty_bandwidth);
+        // Should return processes from the real system (at least the calling process)
+        assert!(!processes.is_empty(), "expected at least one process on a running system");
+        // Verify sort order: RAM descending
+        if processes.len() >= 2 {
+            assert!(processes[0].ram_bytes >= processes[1].ram_bytes, "processes must be sorted by RAM descending");
+        }
+    }
+}

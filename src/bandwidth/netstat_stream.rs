@@ -169,3 +169,87 @@ impl NetstatStream {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const EXPECTED_PARTS: usize = 11;
+
+    #[test]
+    fn given_link_line_with_address_then_returns_correct_entry() {
+        let line = "en0 1500 <Link#6> a4:5e:60:xx:xx:xx 12345 0 1234567 98765 0 9876543 0";
+        let entry = NetstatStream::parse_line(line, EXPECTED_PARTS).unwrap();
+        assert_eq!(entry.name, "en0");
+        assert_eq!(entry.mtu, 1500);
+        assert_eq!(entry.address, "a4:5e:60:xx:xx:xx");
+        assert_eq!(entry.ibytes, 1234567);
+        assert_eq!(entry.obytes, 9876543);
+    }
+
+    #[test]
+    fn given_link_line_without_address_then_returns_entry_with_na() {
+        let line = "lo0 16896 <Link#1> 99999 0 9999999 99999 0 9999999 0";
+        let entry = NetstatStream::parse_line(line, EXPECTED_PARTS).unwrap();
+        assert_eq!(entry.name, "lo0");
+        assert_eq!(entry.mtu, 16896);
+        assert_eq!(entry.address, "N/A");
+        assert_eq!(entry.ibytes, 9999999);
+        assert_eq!(entry.obytes, 9999999);
+    }
+
+    #[test]
+    fn given_non_link_network_address_line_then_returns_none() {
+        let line = "en0 1500 192.168.1 router 12345 - 1234567 98765 - 9876543 -";
+        let entry = NetstatStream::parse_line(line, EXPECTED_PARTS);
+        assert!(entry.is_none());
+    }
+
+    #[test]
+    fn given_line_with_too_few_parts_then_returns_none() {
+        let entry = NetstatStream::parse_line("garbage text", EXPECTED_PARTS);
+        assert!(entry.is_none());
+    }
+
+    #[test]
+    fn given_link_line_with_invalid_mtu_then_returns_none() {
+        let line = "en0 xxx <Link#6> a4:5e:60:xx:xx:xx 12345 0 1234567 98765 0 9876543 0";
+        let entry = NetstatStream::parse_line(line, EXPECTED_PARTS);
+        assert!(entry.is_none());
+    }
+
+    #[test]
+    fn given_link_line_with_invalid_ibytes_then_returns_none() {
+        let line = "lo0 16896 <Link#1> 99999 0 xxx 99999 0 9999999 0";
+        let entry = NetstatStream::parse_line(line, EXPECTED_PARTS);
+        assert!(entry.is_none());
+    }
+
+    #[test]
+    fn given_valid_netstat_output_then_returns_only_link_entries() {
+        let output = "\
+Name Mtu Network Address Ipkts Ierrs Ibytes Opkts Oerrs Obytes Coll
+en0 1500 <Link#6> a4:5e:60:xx:xx:xx 12345 0 1234567 98765 0 9876543 0
+en0 1500 192.168.1 router 12345 - 1234567 98765 - 9876543 -
+lo0 16896 <Link#1> 99999 0 9999999 99999 0 9999999 0";
+        let entries = NetstatStream::parse_netstat_output(output);
+        assert_eq!(entries.len(), 2, "should only include <Link#> entries");
+        assert_eq!(entries[0].name, "en0");
+        assert_eq!(entries[0].address, "a4:5e:60:xx:xx:xx");
+        assert_eq!(entries[1].name, "lo0");
+        assert_eq!(entries[1].address, "N/A");
+    }
+
+    #[test]
+    fn given_empty_string_then_parse_netstat_output_returns_empty() {
+        let entries = NetstatStream::parse_netstat_output("");
+        assert!(entries.is_empty());
+    }
+
+    #[test]
+    fn given_header_only_then_parse_netstat_output_returns_empty() {
+        let output = "Name Mtu Network Address Ipkts Ierrs Ibytes Opkts Oerrs Obytes Coll";
+        let entries = NetstatStream::parse_netstat_output(output);
+        assert!(entries.is_empty());
+    }
+}

@@ -157,3 +157,106 @@ impl LsofStream {
         Some((Protocol::UDP.to_string(), local, String::from(""), String::from("")))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn given_tcp_established_socket_then_parse_tcp_returns_all_fields() {
+        let result = LsofStream::parse_tcp("TCP 192.168.1.5:52532->142.250.80.46:443 (ESTABLISHED)").unwrap();
+        assert_eq!(result.0, "TCP");
+        assert_eq!(result.1, "192.168.1.5:52532");
+        assert_eq!(result.2, "142.250.80.46:443");
+        assert_eq!(result.3, "ESTABLISHED");
+    }
+
+    #[test]
+    fn given_tcp_listen_socket_then_parse_tcp_returns_listen_state() {
+        let result = LsofStream::parse_tcp("TCP *:52532 (LISTEN)").unwrap();
+        assert_eq!(result.0, "TCP");
+        assert_eq!(result.1, "*:52532");
+        assert_eq!(result.2, "");
+        assert_eq!(result.3, "LISTEN");
+    }
+
+    #[test]
+    fn given_tcp_socket_without_state_then_parse_tcp_returns_empty_state() {
+        let result = LsofStream::parse_tcp("TCP 192.168.1.5:52532->142.250.80.46:443").unwrap();
+        assert_eq!(result.0, "TCP");
+        assert_eq!(result.1, "192.168.1.5:52532");
+        assert_eq!(result.2, "142.250.80.46:443");
+        assert_eq!(result.3, "");
+    }
+
+    #[test]
+    fn given_udp_socket_then_parse_udp_returns_protocol_and_local() {
+        let result = LsofStream::parse_udp("UDP *:5353").unwrap();
+        assert_eq!(result.0, "UDP");
+        assert_eq!(result.1, "*:5353");
+        assert_eq!(result.2, "");
+        assert_eq!(result.3, "");
+    }
+
+    #[test]
+    fn given_non_udp_protocol_then_parse_udp_returns_none() {
+        let result = LsofStream::parse_udp("RAW *:12345");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn given_tcp_socket_info_then_parse_socket_info_delegates_to_tcp() {
+        let result = LsofStream::parse_socket_info("TCP 10.0.0.1:8080->10.0.0.2:443 (ESTABLISHED)").unwrap();
+        assert_eq!(result.0, "TCP");
+        assert_eq!(result.1, "10.0.0.1:8080");
+        assert_eq!(result.2, "10.0.0.2:443");
+        assert_eq!(result.3, "ESTABLISHED");
+    }
+
+    #[test]
+    fn given_udp_socket_info_then_parse_socket_info_delegates_to_udp() {
+        let result = LsofStream::parse_socket_info("UDP *:5353").unwrap();
+        assert_eq!(result.0, "UDP");
+        assert_eq!(result.1, "*:5353");
+    }
+
+    #[test]
+    fn given_valid_lsof_output_then_parse_lsof_output_returns_connections() {
+        let output = "\
+COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME
+chrome 1234 user 42u IPv4 0xabc 0t0 TCP 192.168.1.5:52532->142.250.80.46:443 (ESTABLISHED)
+mdnsresponder 567 user 8u IPv4 0xdef 0t0 UDP *:5353";
+        let connections = LsofStream::parse_lsof_output(output);
+        assert_eq!(connections.len(), 2);
+        assert_eq!(connections[0].process, "chrome");
+        assert_eq!(connections[0].pid, 1234);
+        assert_eq!(connections[0].local, "192.168.1.5:52532");
+        assert_eq!(connections[0].remote, "142.250.80.46:443");
+        assert_eq!(connections[0].state, "ESTABLISHED");
+        assert_eq!(connections[0].protocol, "TCP");
+        assert_eq!(connections[1].process, "mdnsresponder");
+        assert_eq!(connections[1].pid, 567);
+        assert_eq!(connections[1].local, "*:5353");
+        assert_eq!(connections[1].protocol, "UDP");
+    }
+
+    #[test]
+    fn given_empty_output_then_parse_lsof_output_returns_empty() {
+        let connections = LsofStream::parse_lsof_output("");
+        assert!(connections.is_empty());
+    }
+
+    #[test]
+    fn given_header_only_then_parse_lsof_output_returns_empty() {
+        let output = "COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME";
+        let connections = LsofStream::parse_lsof_output(output);
+        assert!(connections.is_empty());
+    }
+
+    #[test]
+    fn given_line_with_too_few_parts_then_parse_line_returns_none() {
+        let line = "short line";
+        let result = LsofStream::parse_line(line, 9);
+        assert!(result.is_none());
+    }
+}

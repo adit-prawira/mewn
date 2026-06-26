@@ -28,3 +28,45 @@ impl BytesFormat {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn given_zero_bytes_then_format_bytes_returns_zero_b() {
+        assert_eq!(BytesFormat::format_bytes(0.0), "0.00 B");
+    }
+
+    #[test]
+    fn given_bytes_under_1kb_then_format_bytes_returns_b() {
+        assert_eq!(BytesFormat::format_bytes(512.0), "512.00 B");
+    }
+
+    #[test]
+    fn given_exactly_1kb_then_format_bytes_returns_kb() {
+        assert_eq!(BytesFormat::format_bytes(1024.0), "1.00 KB");
+    }
+
+    #[test]
+    fn given_one_and_half_kb_then_format_bytes_returns_kb() {
+        assert_eq!(BytesFormat::format_bytes(1536.0), "1.50 KB");
+    }
+
+    #[test]
+    fn given_1mb_then_format_bytes_returns_mb() {
+        assert_eq!(BytesFormat::format_bytes(1048576.0), "1.00 MB");
+    }
+
+    #[test]
+    fn given_1gb_then_format_bytes_returns_gb() {
+        assert_eq!(BytesFormat::format_bytes(1073741824.0), "1.00 GB");
+    }
+
+    #[test]
+    fn given_bytes_per_second_then_suffix_is_per_s() {
+        assert_eq!(BytesFormat::format_bytes_per_seconds(0.0), "0.00 B/s");
+        assert_eq!(BytesFormat::format_bytes_per_seconds(1024.0), "1.00 KB/s");
+        assert_eq!(BytesFormat::format_bytes_per_seconds(1048576.0), "1.00 MB/s");
+    }
+}

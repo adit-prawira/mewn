@@ -32,3 +32,31 @@ impl BandwidthStore {
         self.shared_bandwidth_statistics.clone()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn given_default_store_then_shared_vec_is_empty() {
+        let store = BandwidthStore::default();
+        let guard = store.shared_bandwidth_statistics.lock().unwrap();
+        assert!(guard.is_empty());
+    }
+
+    #[tokio::test]
+    async fn given_store_watch_then_returns_shared_ref_without_panicking() {
+        let store = BandwidthStore::default();
+        let shared = store.watch().await;
+        let guard = shared.lock().unwrap();
+        assert!(guard.is_empty());
+    }
+
+    #[tokio::test]
+    async fn given_store_watch_then_returns_same_arc_allocation() {
+        let store = BandwidthStore::default();
+        let original_ptr = Arc::as_ptr(&store.shared_bandwidth_statistics);
+        let shared = store.watch().await;
+        assert_eq!(Arc::as_ptr(&shared), original_ptr, "watch must return the same allocation");
+    }
+}
