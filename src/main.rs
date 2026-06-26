@@ -1,26 +1,21 @@
 use std::time::Duration;
 
+use clap::Parser;
 use crossterm::event::{self, Event, KeyCode};
 use mewn::bandwidth::store::BandwidthStore;
 use mewn::cat::Cat;
+use mewn::cli::Cli;
 use mewn::connections::store::ConnectionStore;
 use mewn::dashboard::Dashboard;
 use mewn::packet::store::PacketStore;
 use mewn::permissions::bpf::BpfAccess;
-use mewn::permissions::setup::PermissionSetup;
 use mewn::processes::store::ProcessStore;
 use mewn::terminal::Terminal;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let args: Vec<String> = std::env::args().collect();
-
-    if args.contains(&"--setup".to_string()) {
-        return PermissionSetup::run_setup();
-    }
-
-    if args.contains(&"--teardown".to_string()) {
-        return PermissionSetup::run_teardown();
+    if Cli::parse().process().await? {
+        return Ok(());
     }
 
     if !BpfAccess::is_available() {

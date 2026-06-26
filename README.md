@@ -15,7 +15,6 @@ A terminal-based network monitor with a cute cat mascot.
 ### Coming soon
 
 - 🖥️ Help screen with keybinding reference
-- 💾 Export to JSON/CSV
 - ⚙️ Configurable via `~/.config/mewn/config.toml`
 
 ## Installation
@@ -28,18 +27,56 @@ cd mewn
 cargo build --release
 ```
 
+### Install globally
+
+```bash
+cargo install --path .
+# Binary lands in ~/.cargo/bin/mewn
+```
+
 ## Usage
 
 ```bash
 # Run the dashboard
 mewn
 
+# Show version
+mewn version
+mewn --version
+
+# Show help
+mewn --help
+
 # Setup packet capture permissions (requires sudo)
+sudo mewn setup
 sudo mewn --setup
 
 # Remove packet capture permissions (requires sudo)
+sudo mewn teardown
 sudo mewn --teardown
+
+# Export data (2s capture, then write to file)
+mewn export connections --format json --output out.json
+mewn export bandwidth   -f csv -o out.csv
+mewn export packets     -f json -o out.json
+mewn export processes   -f csv -o out.csv
 ```
+
+### Export domains
+
+| Domain | Description |
+|--------|-------------|
+| `connections` | Active TCP/UDP connections (PID, process, local, remote, state, protocol) |
+| `bandwidth` | Per-interface upload/download rates (name, address, MTU, rates) |
+| `packets` | Captured packet headers (timestamp, protocol, source, destination, size) |
+| `processes` | Per-process stats (process, PID, connections, upload, download, CPU, RAM) |
+
+### Export formats
+
+| Flag | Format |
+|------|--------|
+| `-f json` / `--format json` | Pretty-printed JSON |
+| `-f csv` / `--format csv` | Comma-separated values |
 
 ## Keyboard Shortcuts
 
@@ -95,7 +132,7 @@ Packet capture requires elevated permissions. Mewn provides a one-time setup per
 ### macOS
 
 ```bash
-sudo mewn --setup
+sudo mewn setup
 ```
 
 Creates a LaunchDaemon at `/Library/LaunchDaemons/com.mewn.bpf.plist` that runs on boot:
@@ -107,13 +144,13 @@ chmod go+rw /dev/bpf*
 To remove:
 
 ```bash
-sudo mewn --teardown
+sudo mewn teardown
 ```
 
 ### Linux
 
 ```bash
-sudo mewn --setup
+sudo mewn setup
 ```
 
 Sets `cap_net_raw+ep` on the binary via `setcap`. Requires `libcap2-bin`:
@@ -125,7 +162,7 @@ sudo apt install libcap2-bin
 To remove:
 
 ```bash
-sudo mewn --teardown
+sudo mewn teardown
 ```
 
 ### Windows
@@ -139,11 +176,11 @@ Install [Npcap](https://npcap.com), then run as Administrator. No CLI setup requ
 Before running `cargo run` on a new machine, install BPF permissions once:
 
 ```bash
-cargo build && sudo ./target/debug/mewn --setup
+cargo build && sudo ./target/debug/mewn setup
 ```
 
 > [!WARNING]  
-> Do **not** use `sudo cargo run -- --setup`. This runs the entire Rust toolchain as root, leaving root-owned files in `target/`. Subsequent `cargo run` as your normal user will fail with permission errors because cargo can't overwrite those files.
+> Do **not** use `sudo cargo run -- setup`. This runs the entire Rust toolchain as root, leaving root-owned files in `target/`. Subsequent `cargo run` as your normal user will fail with permission errors because cargo can't overwrite those files.
 
 After setup, development is just:
 

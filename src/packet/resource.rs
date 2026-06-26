@@ -1,4 +1,6 @@
-#[derive(Clone)]
+use serde::Serialize;
+
+#[derive(Clone, Serialize)]
 pub struct Packet {
     pub timestamp: String,
     pub protocol: String,
