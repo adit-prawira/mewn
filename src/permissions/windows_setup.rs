@@ -33,3 +33,18 @@ impl OsSetup for WindowsSetup {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn given_windows_setup_then_run_returns_ok() {
+        assert!(WindowsSetup::run().is_ok());
+    }
+
+    #[test]
+    fn given_windows_setup_then_teardown_returns_ok() {
+        assert!(WindowsSetup::teardown().is_ok());
+    }
+}

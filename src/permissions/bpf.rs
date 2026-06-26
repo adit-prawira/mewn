@@ -39,3 +39,19 @@ impl BpfAccess {
         Capture::from_device(device).and_then(|capture| capture.open()).is_ok()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn given_bpf_access_then_is_available_returns_bool_without_panicking() {
+        let _result = BpfAccess::is_available();
+    }
+
+    #[test]
+    fn given_bpf_access_then_help_message_returns_static_str_without_panicking() {
+        let msg = BpfAccess::help_message();
+        let _ = msg.len();
+    }
+}
