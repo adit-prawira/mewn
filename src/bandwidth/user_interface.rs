@@ -3,26 +3,22 @@ use std::time::{Duration, Instant};
 
 use crossterm::event::KeyCode;
 use ratatui::Frame;
-use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
-use ratatui::style::{Color, Style};
-use ratatui::symbols::Marker;
-use ratatui::text::{Line, Span};
-use ratatui::widgets::{Axis, Block, BorderType, Borders, Cell, Chart, Dataset, GraphType, Padding, Row, Table};
+use ratatui::layout::{Constraint, Direction, Layout, Rect};
 
 use crate::atoms::search_bar::SearchBarComponent;
-use crate::theme::{GREEN, PRIMARY, TEXT_COLOR, TEXT_COLOR_DARKER, YELLOW};
-use crate::utilities::bytes_format::BytesFormat;
 
+use super::download_chart::DownloadChartComponent;
 use super::resource::BandwidthStatistic;
+use super::table::TableComponent;
+use super::upload_chart::UploadChartComponent;
 
 #[derive(Default)]
 pub struct BandwidthUserInterface {
-    selected_row: usize,
-    scroll_offset: usize,
     upload_history: HashMap<String, Vec<u64>>,
     download_history: HashMap<String, Vec<u64>>,
     last_push_at: Option<Instant>,
     search_bar_component: SearchBarComponent,
+    table_component: TableComponent,
 }
 
 impl BandwidthUserInterface {
@@ -52,7 +48,6 @@ impl BandwidthUserInterface {
                 .filter(|statistic| statistic.name.to_lowercase().contains(&search_query) || statistic.address.to_lowercase().contains(&search_query))
                 .collect()
         };
-        self.selected_row = self.selected_row.min(filtered_bandwidth_statistics.len().saturating_sub(1));
         let should_push = self.last_push_at.is_none_or(|time| time.elapsed() >= Duration::from_secs(1));
 
         if should_push {
@@ -69,78 +64,9 @@ impl BandwidthUserInterface {
             self.last_push_at = Some(Instant::now());
         }
 
-        let viewport = (table_area.height as usize).saturating_sub(3).max(1);
+        self.table_component.render(filtered_bandwidth_statistics.clone(), frame, table_area);
 
-        if self.selected_row < self.scroll_offset {
-            self.scroll_offset = self.selected_row;
-        }
-
-        if self.selected_row >= self.scroll_offset + viewport {
-            self.scroll_offset = self.selected_row.saturating_sub(viewport.saturating_sub(1));
-        }
-
-        let header_cells = ["", "", "Name", "Address", "Upload", "Download", "Total", "Maximum Transmission Unit", ""]
-            .iter()
-            .map(|header| {
-                let style = Style::default().fg(TEXT_COLOR).bold();
-                Cell::from(*header).style(style)
-            });
-
-        let default_text_style = Style::default().fg(TEXT_COLOR_DARKER);
-        let table_header = Row::new(header_cells).height(1);
-        let table_rows = filtered_bandwidth_statistics
-            .iter()
-            .enumerate()
-            .skip(self.scroll_offset)
-            .take(viewport)
-            .map(|(index, bandwidth_statistic)| {
-                let is_selected = index == self.selected_row;
-                let selected_indicator = if is_selected { "▶".to_string() } else { String::from("") };
-                let style = if is_selected {
-                    Style::default().fg(Color::Gray).bg(Color::Rgb(132, 75, 92))
-                } else {
-                    Style::default().fg(Color::Gray)
-                };
-
-                Row::new([
-                    Cell::from(""),
-                    Cell::from(selected_indicator).style(default_text_style),
-                    Cell::from(bandwidth_statistic.name.to_string()).style(default_text_style),
-                    Cell::from(bandwidth_statistic.address.to_string()).style(default_text_style),
-                    Cell::from(bandwidth_statistic.upload.to_string()).style(Style::default().fg(GREEN)),
-                    Cell::from(bandwidth_statistic.download.to_string()).style(Style::default().fg(YELLOW)),
-                    Cell::from(bandwidth_statistic.total.to_string()).style(PRIMARY),
-                    Cell::from(Line::from(Span::raw(&bandwidth_statistic.maximum_transmission_unit)).alignment(Alignment::Right)).style(default_text_style),
-                    Cell::from(""),
-                ])
-                .style(style)
-            });
-        let content_block = Block::default()
-            .borders(Borders::ALL)
-            .border_type(BorderType::Rounded)
-            .style(Style::default().fg(PRIMARY))
-            .padding(Padding::new(2, 2, 0, 0));
-
-        let table = Table::new(
-            table_rows,
-            [
-                Constraint::Length(1),
-                Constraint::Length(2),
-                Constraint::Length(10),
-                Constraint::Length(20),
-                Constraint::Length(15),
-                Constraint::Length(15),
-                Constraint::Length(15),
-                Constraint::Length(25),
-                Constraint::Length(1),
-            ],
-        )
-        .header(table_header)
-        .block(content_block);
-
-        frame.render_widget(table, table_area);
-
-        let Some(selected_statistic) = filtered_bandwidth_statistics.get(self.selected_row) else {
+        let Some(selected_statistic) = filtered_bandwidth_statistics.get(self.table_component.get_selected_row()) else {
             return;
         };
 
@@ -162,129 +88,32 @@ impl BandwidthUserInterface {
                 KeyCode::Esc => {
                     self.search_bar_component.inactive();
                     self.search_bar_component.reset();
-                    self.reset_selection();
+                    self.table_component.reset_selection();
                 }
                 KeyCode::Enter => {
                     self.search_bar_component.inactive();
                 }
                 KeyCode::Backspace => {
                     self.search_bar_component.remove_search_char();
-                    self.reset_selection();
+                    self.table_component.reset_selection();
                 }
                 KeyCode::Char(c) => {
                     self.search_bar_component.add_search_char(c);
-                    self.reset_selection();
+                    self.table_component.reset_selection();
                 }
                 _ => {}
             }
         }
 
         match key_code {
-            KeyCode::Up => self.previous_row(),
-            KeyCode::Down => self.next_row(),
+            KeyCode::Up => self.table_component.previous_row(),
+            KeyCode::Down => self.table_component.next_row(),
             KeyCode::Char('/') => self.search_bar_component.active(),
             _ => {}
         }
     }
 
-    pub fn reset_selection(&mut self) {
-        self.scroll_offset = 0;
-        self.selected_row = 0;
-    }
-
     pub fn is_searching(&self) -> bool {
         self.search_bar_component.is_active()
-    }
-
-    pub fn next_row(&mut self) {
-        self.selected_row = self.selected_row.saturating_add(1);
-    }
-
-    pub fn previous_row(&mut self) {
-        self.selected_row = self.selected_row.saturating_sub(1);
-    }
-}
-
-struct UploadChartComponent;
-
-impl UploadChartComponent {
-    pub fn render(data: &[u64], statistic: &BandwidthStatistic, frame: &mut Frame, area: Rect) {
-        let upload_points: Vec<(f64, f64)> = data.iter().enumerate().map(|(index, &datum)| (index as f64, datum as f64)).collect();
-        let upload_max = data.iter().max().copied().unwrap_or(0);
-        let upload_dataset = Dataset::default()
-            .graph_type(GraphType::Area)
-            .marker(Marker::Braille)
-            .style(Style::default().fg(GREEN))
-            .data(&upload_points);
-
-        let upload_chart = Chart::new(vec![upload_dataset])
-            .block(
-                Block::default()
-                    .title(format!(
-                        "Upload Rate ({}) [max: {}]",
-                        statistic.upload,
-                        BytesFormat::format_bytes_per_seconds(upload_max as f64)
-                    ))
-                    .title_style(Style::default().fg(TEXT_COLOR))
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Rounded)
-                    .style(Style::default().fg(PRIMARY)),
-            )
-            .x_axis(
-                Axis::default()
-                    .title("Seconds")
-                    .bounds([0.0, upload_points.len() as f64])
-                    .style(Style::default().fg(TEXT_COLOR_DARKER)),
-            )
-            .y_axis(
-                Axis::default()
-                    .title("Bytes/s")
-                    .bounds([0.0, (upload_max as f64).max(1.0)])
-                    .style(Style::default().fg(TEXT_COLOR_DARKER)),
-            );
-
-        frame.render_widget(upload_chart, area);
-    }
-}
-
-struct DownloadChartComponent;
-
-impl DownloadChartComponent {
-    pub fn render(data: &[u64], statistic: &BandwidthStatistic, frame: &mut Frame, area: Rect) {
-        let download_points: Vec<(f64, f64)> = data.iter().enumerate().map(|(index, &datum)| (index as f64, datum as f64)).collect();
-        let download_max = data.iter().max().copied().unwrap_or(0);
-
-        let download_dataset = Dataset::default()
-            .graph_type(GraphType::Area)
-            .marker(Marker::Braille)
-            .style(Style::default().fg(YELLOW))
-            .data(&download_points);
-        let download_chart = Chart::new(vec![download_dataset])
-            .block(
-                Block::default()
-                    .title(format!(
-                        "Download Rate ({}) [max: {}]",
-                        statistic.download,
-                        BytesFormat::format_bytes_per_seconds(download_max as f64)
-                    ))
-                    .title_style(Style::default().fg(TEXT_COLOR))
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Rounded)
-                    .style(Style::default().fg(PRIMARY)),
-            )
-            .x_axis(
-                Axis::default()
-                    .title("Seconds")
-                    .bounds([0.0, download_points.len() as f64])
-                    .style(Style::default().fg(TEXT_COLOR_DARKER)),
-            )
-            .y_axis(
-                Axis::default()
-                    .title("Bytes/s")
-                    .bounds([0.0, (download_max as f64).max(1.0)])
-                    .style(Style::default().fg(TEXT_COLOR_DARKER)),
-            );
-
-        frame.render_widget(download_chart, area);
     }
 }
