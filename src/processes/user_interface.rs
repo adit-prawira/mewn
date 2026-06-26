@@ -4,16 +4,15 @@ use std::time::{Duration, Instant};
 use crossterm::event::KeyCode;
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
-use ratatui::style::{Color, Style};
-use ratatui::symbols::Marker;
-use ratatui::widgets::{Axis, Block, BorderType, Borders, Chart, Dataset, GraphType};
 
 use crate::atoms::search_bar::SearchBarComponent;
-use crate::theme::{GREEN, PRIMARY, TEXT_COLOR, TEXT_COLOR_DARKER, YELLOW};
-use crate::utilities::bytes_format::BytesFormat;
 
+use super::cpu_chart::CpuChartComponent;
+use super::download_chart::DownloadChartComponent;
+use super::ram_chart::RamChartComponent;
 use super::resource::Process;
 use super::table::TableComponent;
+use super::upload_chart::UploadChartComponent;
 
 #[derive(Default)]
 pub struct ProcessUserInterface {
@@ -156,156 +155,5 @@ impl ProcessUserInterface {
             KeyCode::Char('/') => self.search_bar_component.active(),
             _ => {}
         }
-    }
-}
-
-struct UploadChartComponent;
-
-impl UploadChartComponent {
-    pub fn render(data: &[f64], process: &Process, frame: &mut Frame, area: Rect) {
-        let upload_points: Vec<(f64, f64)> = data.iter().enumerate().map(|(index, &datum)| (index as f64, datum)).collect();
-        let upload_max = data.iter().copied().reduce(f64::max).unwrap_or(0.0);
-        let upload_dataset = Dataset::default()
-            .graph_type(GraphType::Area)
-            .marker(Marker::Braille)
-            .style(Style::default().fg(GREEN))
-            .data(&upload_points);
-        let upload_chart = Chart::new(vec![upload_dataset])
-            .block(
-                Block::default()
-                    .title(format!("Upload Rate ({}) [max: {}]", process.upload, BytesFormat::format_bytes_per_seconds(upload_max)))
-                    .title_style(Style::default().fg(TEXT_COLOR))
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Rounded)
-                    .style(Style::default().fg(PRIMARY)),
-            )
-            .x_axis(
-                Axis::default()
-                    .title("Seconds")
-                    .bounds([0.0, upload_points.len() as f64])
-                    .style(Style::default().fg(TEXT_COLOR_DARKER)),
-            )
-            .y_axis(
-                Axis::default()
-                    .title("Bytes/s")
-                    .bounds([0.0, upload_max.max(1.0)])
-                    .style(Style::default().fg(TEXT_COLOR_DARKER)),
-            );
-
-        frame.render_widget(upload_chart, area);
-    }
-}
-
-struct DownloadChartComponent;
-
-impl DownloadChartComponent {
-    pub fn render(data: &[f64], process: &Process, frame: &mut Frame, area: Rect) {
-        let download_points: Vec<(f64, f64)> = data.iter().enumerate().map(|(index, &datum)| (index as f64, datum)).collect();
-        let download_max = data.iter().copied().reduce(f64::max).unwrap_or(0.0);
-        let download_dataset = Dataset::default()
-            .graph_type(GraphType::Area)
-            .marker(Marker::Braille)
-            .style(Style::default().fg(YELLOW))
-            .data(&download_points);
-        let download_chart = Chart::new(vec![download_dataset])
-            .block(
-                Block::default()
-                    .title(format!(
-                        "Download Rate ({}) [max: {}]",
-                        process.download,
-                        BytesFormat::format_bytes_per_seconds(download_max)
-                    ))
-                    .title_style(Style::default().fg(TEXT_COLOR))
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Rounded)
-                    .style(Style::default().fg(PRIMARY)),
-            )
-            .x_axis(
-                Axis::default()
-                    .title("Seconds")
-                    .bounds([0.0, download_points.len() as f64])
-                    .style(Style::default().fg(TEXT_COLOR_DARKER)),
-            )
-            .y_axis(
-                Axis::default()
-                    .title("Bytes/s")
-                    .bounds([0.0, download_max.max(1.0)])
-                    .style(Style::default().fg(TEXT_COLOR_DARKER)),
-            );
-
-        frame.render_widget(download_chart, area);
-    }
-}
-
-struct CpuChartComponent;
-
-impl CpuChartComponent {
-    pub fn render(data: &[f64], process: &Process, frame: &mut Frame, area: Rect) {
-        let cpu_percent_points: Vec<(f64, f64)> = data.iter().enumerate().map(|(index, &datum)| (index as f64, datum)).collect();
-        let cpu_percent_max = data.iter().copied().reduce(f64::max).unwrap_or(0.0);
-        let cpu_percent_dataset = Dataset::default()
-            .graph_type(GraphType::Area)
-            .marker(Marker::Braille)
-            .style(Style::default().fg(Color::Cyan))
-            .data(&cpu_percent_points);
-        let cpu_chart = Chart::new(vec![cpu_percent_dataset])
-            .block(
-                Block::default()
-                    .title(format!("CPU Usage ({:.2}%) [max: {:.2}%]", process.cpu_percent, cpu_percent_max))
-                    .title_style(Style::default().fg(TEXT_COLOR))
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Rounded)
-                    .style(Style::default().fg(PRIMARY)),
-            )
-            .x_axis(
-                Axis::default()
-                    .title("Seconds")
-                    .bounds([0.0, cpu_percent_points.len() as f64])
-                    .style(Style::default().fg(TEXT_COLOR_DARKER)),
-            )
-            .y_axis(
-                Axis::default()
-                    .title("%")
-                    .bounds([0.0, cpu_percent_max.max(1.0)])
-                    .style(Style::default().fg(TEXT_COLOR_DARKER)),
-            );
-        frame.render_widget(cpu_chart, area);
-    }
-}
-
-struct RamChartComponent;
-
-impl RamChartComponent {
-    pub fn render(data: &[f64], process: &Process, frame: &mut Frame, area: Rect) {
-        let ram_size_points: Vec<(f64, f64)> = data.iter().enumerate().map(|(index, &datum)| (index as f64, datum)).collect();
-        let ram_size_max = data.iter().copied().reduce(f64::max).unwrap_or(0.0);
-        let ram_size_dataset = Dataset::default()
-            .graph_type(GraphType::Area)
-            .marker(Marker::Braille)
-            .style(Style::default().fg(Color::Magenta))
-            .data(&ram_size_points);
-
-        let ram_chart = Chart::new(vec![ram_size_dataset])
-            .block(
-                Block::default()
-                    .title(format!("RAM ({}) [max: {}]", process.ram, BytesFormat::format_bytes(ram_size_max)))
-                    .title_style(Style::default().fg(TEXT_COLOR))
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Rounded)
-                    .style(Style::default().fg(PRIMARY)),
-            )
-            .x_axis(
-                Axis::default()
-                    .title("Seconds")
-                    .bounds([0.0, ram_size_points.len() as f64])
-                    .style(Style::default().fg(TEXT_COLOR_DARKER)),
-            )
-            .y_axis(
-                Axis::default()
-                    .title("Bytes")
-                    .bounds([0.0, ram_size_max.max(1.0)])
-                    .style(Style::default().fg(TEXT_COLOR_DARKER)),
-            );
-        frame.render_widget(ram_chart, area);
     }
 }
