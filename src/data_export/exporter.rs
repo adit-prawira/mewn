@@ -7,6 +7,8 @@ use anyhow::{Ok, Result};
 use serde::Serialize;
 use tokio::time::interval;
 
+use crate::config::Config;
+
 use super::resource::ExportFormat;
 
 pub trait Exporter {
@@ -19,7 +21,7 @@ pub trait Exporter {
 
     async fn export(&self, format: &ExportFormat, output: &Path) -> Result<()> {
         let shared = self.store_and_watch().await;
-        let mut interval = interval(Duration::from_secs(1));
+        let mut interval = interval(Duration::from_secs(Config::load().poll_interval));
         interval.tick().await;
         interval.tick().await;
 

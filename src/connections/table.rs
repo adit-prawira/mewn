@@ -1,9 +1,9 @@
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Rect};
-use ratatui::style::{Color, Style};
+use ratatui::style::Style;
 use ratatui::widgets::{Block, BorderType, Borders, Cell, Padding, Row, Table};
 
-use crate::theme::{BLUE, GREEN, PRIMARY, TEXT_COLOR, TEXT_COLOR_DARKER, YELLOW, YELLOW_DARKER};
+use crate::theme::Theme;
 
 use super::resource::Connection;
 
@@ -39,26 +39,29 @@ impl TableComponent {
         }
 
         let header_cells = ["", "", "PID", "Process", "Protocol", "Local", "Remote", "State", ""].iter().map(|header| {
-            let style = Style::default().fg(TEXT_COLOR).bold();
+            let style = Style::default().fg(Theme::text()).bold();
             Cell::from(*header).style(style)
         });
 
-        let default_text_style = Style::default().fg(TEXT_COLOR_DARKER);
+        let default_text_style = Style::default().fg(Theme::text_dim());
         let table_header = Row::new(header_cells).height(1);
         let table_rows = connections.iter().enumerate().skip(self.scroll_offset).take(viewport).map(|(index, connection)| {
             let is_selected = index == self.selected_row;
             let selected_indicator = if is_selected { "▶".to_string() } else { String::from("") };
             let style = if is_selected {
-                Style::default().fg(Color::Gray).bg(Color::Rgb(132, 75, 92))
+                Style::default().fg(Theme::indicator()).bg(Theme::selected())
             } else {
-                Style::default().fg(Color::Gray)
+                Style::default().fg(Theme::indicator())
             };
             let protocol_style = match connection.protocol.as_str() {
-                "TCP" => Style::default().fg(GREEN),
+                "TCP" => Style::default().fg(Theme::tcp()),
                 "UDP" => {
                     let has_dns = connection.local.ends_with(":53") || connection.remote.ends_with(":53");
-
-                    if has_dns { Style::default().fg(YELLOW) } else { Style::default().fg(BLUE) }
+                    if has_dns {
+                        Style::default().fg(Theme::udp_secondary())
+                    } else {
+                        Style::default().fg(Theme::udp())
+                    }
                 }
                 _ => default_text_style,
             };
@@ -67,10 +70,10 @@ impl TableComponent {
                 Cell::from(""),
                 Cell::from(selected_indicator).style(default_text_style),
                 Cell::from(connection.pid.to_string()).style(default_text_style),
-                Cell::from(connection.process.to_string()).style(Style::default().fg(GREEN)),
+                Cell::from(connection.process.to_string()).style(default_text_style),
                 Cell::from(connection.protocol.to_string()).style(protocol_style),
-                Cell::from(connection.local.to_string()).style(Style::default().fg(YELLOW)),
-                Cell::from(connection.remote.to_string()).style(Style::default().fg(YELLOW_DARKER)),
+                Cell::from(connection.local.to_string()).style(Style::default().fg(Theme::source_address())),
+                Cell::from(connection.remote.to_string()).style(Style::default().fg(Theme::destination_address())),
                 Cell::from(connection.state.to_string()).style(default_text_style),
                 Cell::from(""),
             ])
@@ -81,7 +84,7 @@ impl TableComponent {
             .title(title)
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
-            .style(Style::default().fg(PRIMARY))
+            .style(Style::default().fg(Theme::border()))
             .padding(Padding::new(2, 2, 1, 1));
 
         let table = Table::new(

@@ -1,6 +1,8 @@
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use crate::config::Config;
+
 use super::resource::Packet;
 use super::stream::PacketStream;
 
@@ -21,7 +23,7 @@ impl PacketStore {
         let shared_packets = Arc::clone(&self.shared_packets);
 
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(Duration::from_secs(1));
+            let mut interval = tokio::time::interval(Duration::from_secs(Config::load().poll_interval));
             loop {
                 interval.tick().await;
                 let new_packets = tokio::task::spawn_blocking(PacketStream::get_packets).await.unwrap_or_default();

@@ -6,6 +6,7 @@ use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 
 use crate::atoms::search_bar::SearchBarComponent;
+use crate::config::Config;
 
 use super::cpu_chart::CpuChartComponent;
 use super::download_chart::DownloadChartComponent;
@@ -58,7 +59,7 @@ impl ProcessUserInterface {
 
         filtered_processes.sort_by(|a, b| self.table_component.compare(a, b));
 
-        let should_push = self.last_push_at.is_none_or(|time| time.elapsed() >= Duration::from_secs(1));
+        let should_push = self.last_push_at.is_none_or(|time| time.elapsed() >= Duration::from_secs(Config::load().poll_interval));
 
         if should_push {
             for process in &filtered_processes {

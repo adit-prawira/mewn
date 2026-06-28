@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use crate::config::Config;
 use crate::connections::resource::Connection;
 use crate::packet::resource::Packet;
 
@@ -25,7 +26,7 @@ impl ProcessStore {
         let shared_process = Arc::clone(&self.shared_processes);
 
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(Duration::from_secs(1));
+            let mut interval = tokio::time::interval(Duration::from_secs(Config::load().poll_interval));
             let mut sysinfo = SysinfoStream::new();
 
             loop {

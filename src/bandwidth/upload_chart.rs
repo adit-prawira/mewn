@@ -4,7 +4,7 @@ use ratatui::style::Style;
 use ratatui::symbols::Marker;
 use ratatui::widgets::{Axis, Block, BorderType, Borders, Chart, Dataset, GraphType};
 
-use crate::theme::{GREEN, PRIMARY, TEXT_COLOR, TEXT_COLOR_DARKER};
+use crate::theme::Theme;
 use crate::utilities::bytes_format::BytesFormat;
 
 use super::resource::BandwidthStatistic;
@@ -18,7 +18,7 @@ impl UploadChartComponent {
         let upload_dataset = Dataset::default()
             .graph_type(GraphType::Area)
             .marker(Marker::Braille)
-            .style(Style::default().fg(GREEN))
+            .style(Style::default().fg(Theme::upload_rate()))
             .data(&upload_points);
 
         let upload_chart = Chart::new(vec![upload_dataset])
@@ -29,22 +29,22 @@ impl UploadChartComponent {
                         statistic.upload,
                         BytesFormat::format_bytes_per_seconds(upload_max as f64)
                     ))
-                    .title_style(Style::default().fg(TEXT_COLOR))
+                    .title_style(Style::default().fg(Theme::text()))
                     .borders(Borders::ALL)
                     .border_type(BorderType::Rounded)
-                    .style(Style::default().fg(PRIMARY)),
+                    .style(Style::default().fg(Theme::border())),
             )
             .x_axis(
                 Axis::default()
                     .title("Seconds")
                     .bounds([0.0, upload_points.len() as f64])
-                    .style(Style::default().fg(TEXT_COLOR_DARKER)),
+                    .style(Style::default().fg(Theme::text_dim())),
             )
             .y_axis(
                 Axis::default()
                     .title("Bytes/s")
                     .bounds([0.0, (upload_max as f64).max(1.0)])
-                    .style(Style::default().fg(TEXT_COLOR_DARKER)),
+                    .style(Style::default().fg(Theme::text_dim())),
             );
 
         frame.render_widget(upload_chart, area);

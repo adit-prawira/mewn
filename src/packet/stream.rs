@@ -5,6 +5,7 @@ use std::time::{Duration, Instant};
 use etherparse::{NetSlice, SlicedPacket, TransportSlice};
 use pcap::{Active, Capture, Device};
 
+use crate::config::Config;
 use crate::utilities::bytes_format::BytesFormat;
 
 use super::resource::Packet;
@@ -35,17 +36,8 @@ impl PacketStream {
                 let Some(devices) = Device::list().ok() else {
                     return Vec::new();
                 };
-                let Some(device) = devices
-                    .iter()
-                    .filter(|device| device.flags.is_up() && device.flags.is_running() && !device.flags.is_loopback() && !device.addresses.is_empty())
-                    .min_by_key(|device| {
-                        let has_routable_ipv4 = device
-                            .addresses
-                            .iter()
-                            .any(|address| if let IpAddr::V4(ipv4) = address.addr { !ipv4.is_link_local() } else { false });
-                        if has_routable_ipv4 { 0 } else { 1 }
-                    })
-                else {
+
+                let Some(device) = Self::resolve_interface(Config::load().interface.as_deref(), &devices) else {
                     return Vec::new();
                 };
 
@@ -109,6 +101,27 @@ impl PacketStream {
         }
 
         new_packets
+    }
+
+    fn resolve_interface(config_interface: Option<&str>, devices: &[Device]) -> Option<Device> {
+        if let Some(interface_name) = config_interface {
+            return devices.iter().find(|device| device.name == interface_name).cloned();
+        }
+        Self::auto_detect_device(devices)
+    }
+
+    fn auto_detect_device(devices: &[Device]) -> Option<Device> {
+        devices
+            .iter()
+            .filter(|device| device.flags.is_up() && device.flags.is_running() && !device.flags.is_loopback() && !device.addresses.is_empty())
+            .min_by_key(|device| {
+                let has_routable_ipv4 = device
+                    .addresses
+                    .iter()
+                    .any(|address| if let IpAddr::V4(ipv4) = address.addr { !ipv4.is_link_local() } else { false });
+                if has_routable_ipv4 { 0 } else { 1 }
+            })
+            .cloned()
     }
 
     fn parsed_dns_domain(packet_payload: &[u8]) -> Option<String> {

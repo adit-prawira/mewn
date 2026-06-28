@@ -1,10 +1,10 @@
 use ratatui::Frame;
 use ratatui::layout::{Alignment, Constraint, Rect};
-use ratatui::style::{Color, Style};
+use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, BorderType, Borders, Cell, Padding, Row, Table};
 
-use crate::theme::{GREEN, PRIMARY, TEXT_COLOR, TEXT_COLOR_DARKER, YELLOW};
+use crate::theme::Theme;
 
 use super::resource::BandwidthStatistic;
 
@@ -30,11 +30,11 @@ impl TableComponent {
         let header_cells = ["", "", "Name", "Address", "Upload", "Download", "Total", "Maximum Transmission Unit", ""]
             .iter()
             .map(|header| {
-                let style = Style::default().fg(TEXT_COLOR).bold();
+                let style = Style::default().fg(Theme::text()).bold();
                 Cell::from(*header).style(style)
             });
 
-        let default_text_style = Style::default().fg(TEXT_COLOR_DARKER);
+        let default_text_style = Style::default().fg(Theme::text_dim());
         let table_header = Row::new(header_cells).height(1);
         let table_rows = bandwidth_statistics
             .iter()
@@ -45,9 +45,9 @@ impl TableComponent {
                 let is_selected = index == self.selected_row;
                 let selected_indicator = if is_selected { "▶".to_string() } else { String::from("") };
                 let style = if is_selected {
-                    Style::default().fg(Color::Gray).bg(Color::Rgb(132, 75, 92))
+                    Style::default().fg(Theme::indicator()).bg(Theme::selected())
                 } else {
-                    Style::default().fg(Color::Gray)
+                    Style::default().fg(Theme::indicator())
                 };
 
                 Row::new([
@@ -55,9 +55,9 @@ impl TableComponent {
                     Cell::from(selected_indicator).style(default_text_style),
                     Cell::from(bandwidth_statistic.name.to_string()).style(default_text_style),
                     Cell::from(bandwidth_statistic.address.to_string()).style(default_text_style),
-                    Cell::from(bandwidth_statistic.upload.to_string()).style(Style::default().fg(GREEN)),
-                    Cell::from(bandwidth_statistic.download.to_string()).style(Style::default().fg(YELLOW)),
-                    Cell::from(bandwidth_statistic.total.to_string()).style(PRIMARY),
+                    Cell::from(bandwidth_statistic.upload.to_string()).style(Theme::upload_rate()),
+                    Cell::from(bandwidth_statistic.download.to_string()).style(Theme::download_rate()),
+                    Cell::from(bandwidth_statistic.total.to_string()).style(default_text_style),
                     Cell::from(Line::from(Span::raw(&bandwidth_statistic.maximum_transmission_unit)).alignment(Alignment::Right)).style(default_text_style),
                     Cell::from(""),
                 ])
@@ -66,7 +66,7 @@ impl TableComponent {
         let content_block = Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
-            .style(Style::default().fg(PRIMARY))
+            .style(Style::default().fg(Theme::border()))
             .padding(Padding::new(2, 2, 0, 0));
 
         let table = Table::new(

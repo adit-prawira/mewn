@@ -2,6 +2,7 @@ pub mod atoms;
 pub mod bandwidth;
 pub mod cat;
 pub mod cli;
+pub mod config;
 pub mod connections;
 pub mod dashboard;
 pub mod data_export;

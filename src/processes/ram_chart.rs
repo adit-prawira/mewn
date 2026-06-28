@@ -1,10 +1,10 @@
 use ratatui::Frame;
 use ratatui::layout::Rect;
-use ratatui::style::{Color, Style};
+use ratatui::style::Style;
 use ratatui::symbols::Marker;
 use ratatui::widgets::{Axis, Block, BorderType, Borders, Chart, Dataset, GraphType};
 
-use crate::theme::{PRIMARY, TEXT_COLOR, TEXT_COLOR_DARKER};
+use crate::theme::Theme;
 use crate::utilities::bytes_format::BytesFormat;
 
 use super::resource::Process;
@@ -18,29 +18,29 @@ impl RamChartComponent {
         let ram_size_dataset = Dataset::default()
             .graph_type(GraphType::Area)
             .marker(Marker::Braille)
-            .style(Style::default().fg(Color::Magenta))
+            .style(Style::default().fg(Theme::ram()))
             .data(&ram_size_points);
 
         let ram_chart = Chart::new(vec![ram_size_dataset])
             .block(
                 Block::default()
                     .title(format!("RAM ({}) [max: {}]", process.ram, BytesFormat::format_bytes(ram_size_max)))
-                    .title_style(Style::default().fg(TEXT_COLOR))
+                    .title_style(Style::default().fg(Theme::text()))
                     .borders(Borders::ALL)
                     .border_type(BorderType::Rounded)
-                    .style(Style::default().fg(PRIMARY)),
+                    .style(Style::default().fg(Theme::border())),
             )
             .x_axis(
                 Axis::default()
                     .title("Seconds")
                     .bounds([0.0, ram_size_points.len() as f64])
-                    .style(Style::default().fg(TEXT_COLOR_DARKER)),
+                    .style(Style::default().fg(Theme::text_dim())),
             )
             .y_axis(
                 Axis::default()
                     .title("Bytes")
                     .bounds([0.0, ram_size_max.max(1.0)])
-                    .style(Style::default().fg(TEXT_COLOR_DARKER)),
+                    .style(Style::default().fg(Theme::text_dim())),
             );
         frame.render_widget(ram_chart, area);
     }
