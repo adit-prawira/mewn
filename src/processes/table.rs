@@ -2,10 +2,10 @@ use std::cmp::Ordering;
 
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Rect};
-use ratatui::style::{Color, Style};
+use ratatui::style::Style;
 use ratatui::widgets::{Block, BorderType, Borders, Cell, Padding, Row, Table};
 
-use crate::theme::{GREEN, PRIMARY, TEXT_COLOR, TEXT_COLOR_DARKER, YELLOW};
+use crate::theme::Theme;
 
 use super::resource::Process;
 
@@ -193,32 +193,32 @@ impl TableComponent {
         }
 
         let header_cells = ["", "", "Process", "PID", "Connections", "Upload", "Download", "CPU", "RAM", ""].iter().map(|header| {
-            let style = Style::default().fg(TEXT_COLOR).bold();
+            let style = Style::default().fg(Theme::text()).bold();
             Cell::from(*header).style(style)
         });
 
-        let default_style_text = Style::default().fg(TEXT_COLOR_DARKER);
+        let default_style_text = Style::default().fg(Theme::text_dim());
         let table_header = Row::new(header_cells).height(1);
 
         let table_rows = processes.iter().enumerate().skip(self.scroll_offset).take(viewport).map(|(index, process)| {
             let is_selected = index == self.selected_row;
             let selected_indicator = if is_selected { "▶".to_string() } else { String::from("") };
             let style = if is_selected {
-                Style::default().fg(Color::Gray).bg(Color::Rgb(132, 75, 92))
+                Style::default().fg(Theme::indicator()).bg(Theme::selected())
             } else {
-                Style::default().fg(Color::Gray)
+                Style::default().fg(Theme::indicator())
             };
 
             Row::new([
                 Cell::from(""),
                 Cell::from(selected_indicator).style(default_style_text),
-                Cell::from(process.process.to_string()).style(Style::default().fg(PRIMARY)),
+                Cell::from(process.process.to_string()).style(default_style_text),
                 Cell::from(process.pid.to_string()).style(default_style_text),
                 Cell::from(process.connections.to_string()).style(default_style_text),
-                Cell::from(process.upload.to_string()).style(Style::default().fg(GREEN)),
-                Cell::from(process.download.to_string()).style(Style::default().fg(YELLOW)),
-                Cell::from(process.cpu.to_string()).style(Style::default().fg(YELLOW)),
-                Cell::from(process.ram.to_string()).style(default_style_text),
+                Cell::from(process.upload.to_string()).style(Style::default().fg(Theme::upload_rate())),
+                Cell::from(process.download.to_string()).style(Style::default().fg(Theme::download_rate())),
+                Cell::from(process.cpu.to_string()).style(Style::default().fg(Theme::cpu())),
+                Cell::from(process.ram.to_string()).style(Theme::ram()),
                 Cell::from(""),
             ])
             .style(style)
@@ -241,7 +241,7 @@ impl TableComponent {
             ))
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
-            .style(Style::default().fg(PRIMARY))
+            .style(Style::default().fg(Theme::border()))
             .padding(Padding::new(2, 2, 1, 1));
 
         let table = Table::new(

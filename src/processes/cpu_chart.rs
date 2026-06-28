@@ -1,10 +1,10 @@
 use ratatui::Frame;
 use ratatui::layout::Rect;
-use ratatui::style::{Color, Style};
+use ratatui::style::Style;
 use ratatui::symbols::Marker;
 use ratatui::widgets::{Axis, Block, BorderType, Borders, Chart, Dataset, GraphType};
 
-use crate::theme::{PRIMARY, TEXT_COLOR, TEXT_COLOR_DARKER};
+use crate::theme::Theme;
 
 use super::resource::Process;
 
@@ -17,28 +17,28 @@ impl CpuChartComponent {
         let cpu_percent_dataset = Dataset::default()
             .graph_type(GraphType::Area)
             .marker(Marker::Braille)
-            .style(Style::default().fg(Color::Cyan))
+            .style(Style::default().fg(Theme::cpu()))
             .data(&cpu_percent_points);
         let cpu_chart = Chart::new(vec![cpu_percent_dataset])
             .block(
                 Block::default()
                     .title(format!("CPU Usage ({:.2}%) [max: {:.2}%]", process.cpu_percent, cpu_percent_max))
-                    .title_style(Style::default().fg(TEXT_COLOR))
+                    .title_style(Style::default().fg(Theme::text()))
                     .borders(Borders::ALL)
                     .border_type(BorderType::Rounded)
-                    .style(Style::default().fg(PRIMARY)),
+                    .style(Style::default().fg(Theme::border())),
             )
             .x_axis(
                 Axis::default()
                     .title("Seconds")
                     .bounds([0.0, cpu_percent_points.len() as f64])
-                    .style(Style::default().fg(TEXT_COLOR_DARKER)),
+                    .style(Style::default().fg(Theme::text_dim())),
             )
             .y_axis(
                 Axis::default()
                     .title("%")
                     .bounds([0.0, cpu_percent_max.max(1.0)])
-                    .style(Style::default().fg(TEXT_COLOR_DARKER)),
+                    .style(Style::default().fg(Theme::text_dim())),
             );
         frame.render_widget(cpu_chart, area);
     }

@@ -5,6 +5,7 @@ use std::time::Duration;
 use anyhow::{Ok, Result};
 use tokio::time::interval;
 
+use crate::config::Config;
 use crate::connections::store::ConnectionStore;
 use crate::packet::store::PacketStore;
 use crate::processes::resource::Process;
@@ -24,7 +25,7 @@ impl ProcessExport {
         let shared_packets = packet_store.watch().await;
         let shared_processes = process_store.watch(shared_connections, shared_packets).await;
 
-        let mut interval = interval(Duration::from_secs(1));
+        let mut interval = interval(Duration::from_secs(Config::load().poll_interval));
         interval.tick().await;
         interval.tick().await;
 

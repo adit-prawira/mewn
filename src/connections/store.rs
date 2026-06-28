@@ -1,6 +1,8 @@
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use crate::config::Config;
+
 use super::lsof_stream::LsofStream;
 use super::resource::Connection;
 
@@ -24,7 +26,7 @@ impl ConnectionStore {
     pub async fn watch(&self) -> Arc<Mutex<Vec<Connection>>> {
         let shared_connections = Arc::clone(&self.shared_connections);
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(Duration::from_secs(1));
+            let mut interval = tokio::time::interval(Duration::from_secs(Config::load().poll_interval));
             loop {
                 interval.tick().await;
 

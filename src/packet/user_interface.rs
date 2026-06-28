@@ -2,12 +2,12 @@ use std::fmt::Display;
 
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Rect};
-use ratatui::style::{Color, Style};
+use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, BorderType, Borders, Cell, Padding, Paragraph, Row, Table};
 
 use crate::permissions::bpf::BpfAccess;
-use crate::theme::{BLUE, GREEN, PRIMARY, RED, TEXT_COLOR, TEXT_COLOR_DARKER, YELLOW, YELLOW_DARKER};
+use crate::theme::Theme;
 
 use super::resource::Packet;
 
@@ -54,12 +54,12 @@ impl PacketUserInterface {
             let block = Block::default()
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded)
-                .style(Style::default().fg(PRIMARY))
+                .style(Style::default().fg(Theme::border()))
                 .padding(Padding::new(2, 2, 1, 1));
             let lines = vec![
-                Line::from(Span::styled("Permission Denied", Style::default().fg(YELLOW).bold())),
+                Line::from(Span::styled("Permission Denied", Style::default().fg(Theme::warning()).bold())),
                 Line::from(""),
-                Line::from(BpfAccess::help_message()).style(Style::default().fg(TEXT_COLOR)),
+                Line::from(BpfAccess::help_message()).style(Style::default().fg(Theme::text_dim())),
             ];
 
             let warning = Paragraph::new(lines).block(block);
@@ -77,20 +77,20 @@ impl PacketUserInterface {
         }
 
         let header_cells = ["", "", "Timestamp", "Protocol", "Source", "Destination", "Size", ""].iter().map(|header| {
-            let style = Style::default().fg(TEXT_COLOR).bold();
+            let style = Style::default().fg(Theme::text()).bold();
             Cell::from(*header).style(style)
         });
 
-        let default_text_style = Style::default().fg(TEXT_COLOR_DARKER);
+        let default_text_style = Style::default().fg(Theme::text_dim());
         let table_header = Row::new(header_cells).height(1);
         let table_rows = filtered_packets.iter().enumerate().skip(self.scroll_offset).take(viewport).map(|(index, packet)| {
             let is_selected = index == self.selected_row;
             let selected_indicator = if is_selected { "▶".to_string() } else { String::from("") };
 
             let style = if is_selected {
-                Style::default().fg(Color::Gray).bg(Color::Rgb(132, 75, 92))
+                Style::default().fg(Theme::indicator()).bg(Theme::selected())
             } else {
-                Style::default().fg(Color::Gray)
+                Style::default().fg(Theme::indicator())
             };
 
             let destination = if let Some(ref dns_domain) = packet.dns_domain {
@@ -100,13 +100,17 @@ impl PacketUserInterface {
             };
 
             let protocol_style = match packet.protocol.as_str() {
-                "TCP" => Style::default().fg(GREEN),
+                "TCP" => Style::default().fg(Theme::tcp()),
                 "UDP" => {
                     let has_dns = packet.dns_domain.is_some();
-                    if has_dns { Style::default().fg(YELLOW) } else { Style::default().fg(BLUE) }
+                    if has_dns {
+                        Style::default().fg(Theme::udp_secondary())
+                    } else {
+                        Style::default().fg(Theme::udp())
+                    }
                 }
-                "ICMPV4" => Style::default().fg(RED),
-                "ICMPV6" => Style::default().fg(RED),
+                "ICMPV4" => Style::default().fg(Theme::icmp()),
+                "ICMPV6" => Style::default().fg(Theme::icmp()),
                 _ => default_text_style,
             };
 
@@ -115,8 +119,8 @@ impl PacketUserInterface {
                 Cell::from(selected_indicator).style(default_text_style),
                 Cell::from(packet.timestamp.to_string()).style(default_text_style),
                 Cell::from(packet.protocol.to_string()).style(protocol_style),
-                Cell::from(packet.source.to_string()).style(Style::default().fg(YELLOW)),
-                Cell::from(destination).style(Style::default().fg(YELLOW_DARKER)),
+                Cell::from(packet.source.to_string()).style(Style::default().fg(Theme::source_address())),
+                Cell::from(destination).style(Style::default().fg(Theme::destination_address())),
                 Cell::from(packet.size.to_string()).style(default_text_style),
                 Cell::from(""),
             ])
@@ -129,7 +133,7 @@ impl PacketUserInterface {
             })
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
-            .style(Style::default().fg(PRIMARY))
+            .style(Style::default().fg(Theme::border()))
             .padding(Padding::new(2, 2, 1, 1));
 
         let table = Table::new(

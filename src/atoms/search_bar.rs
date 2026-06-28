@@ -4,7 +4,7 @@ use ratatui::style::Style;
 use ratatui::text::Span;
 use ratatui::widgets::{Block, BorderType, Borders, Padding, Paragraph};
 
-use crate::theme::{PRIMARY, TEXT_COLOR, TEXT_COLOR_DARKER};
+use crate::theme::Theme;
 
 #[derive(Default)]
 pub struct SearchBarComponent {
@@ -26,16 +26,16 @@ impl SearchBarComponent {
         };
 
         let search_style = if self.search_active {
-            Style::default().fg(TEXT_COLOR)
+            Style::default().fg(Theme::text())
         } else {
-            Style::default().fg(TEXT_COLOR_DARKER)
+            Style::default().fg(Theme::text_dim())
         };
 
         let search_span = Span::styled(search_text, search_style);
         let search_bar_block = Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
-            .style(Style::default().fg(PRIMARY))
+            .style(Style::default().fg(Theme::border()))
             .padding(Padding::new(1, 1, 0, 0));
         let search_bar = Paragraph::new(search_span).block(search_bar_block);
 

@@ -1,6 +1,8 @@
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use crate::config::Config;
+
 use super::netstat_stream::NetstatStream;
 use super::resource::BandwidthStatistic;
 
@@ -21,7 +23,7 @@ impl BandwidthStore {
         let shared_bandwidth_statistics = Arc::clone(&self.shared_bandwidth_statistics);
 
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(Duration::from_secs(1));
+            let mut interval = tokio::time::interval(Duration::from_secs(Config::load().poll_interval));
             loop {
                 interval.tick().await;
                 let bandwidth_statistics = tokio::task::spawn_blocking(NetstatStream::get_statistics).await.unwrap_or_default();

@@ -6,6 +6,7 @@ use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 
 use crate::atoms::search_bar::SearchBarComponent;
+use crate::config::Config;
 
 use super::download_chart::DownloadChartComponent;
 use super::resource::BandwidthStatistic;
@@ -48,7 +49,7 @@ impl BandwidthUserInterface {
                 .filter(|statistic| statistic.name.to_lowercase().contains(&search_query) || statistic.address.to_lowercase().contains(&search_query))
                 .collect()
         };
-        let should_push = self.last_push_at.is_none_or(|time| time.elapsed() >= Duration::from_secs(1));
+        let should_push = self.last_push_at.is_none_or(|time| time.elapsed() >= Duration::from_secs(Config::load().poll_interval));
 
         if should_push {
             // updating ring buffer and track 60 seconds worth of history data

@@ -5,18 +5,22 @@ use crossterm::event::{self, Event, KeyCode};
 use mewn::bandwidth::store::BandwidthStore;
 use mewn::cat::Cat;
 use mewn::cli::Cli;
+use mewn::config::Config;
 use mewn::connections::store::ConnectionStore;
 use mewn::dashboard::Dashboard;
 use mewn::packet::store::PacketStore;
 use mewn::permissions::bpf::BpfAccess;
 use mewn::processes::store::ProcessStore;
 use mewn::terminal::Terminal;
+use mewn::theme::Theme;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     if Cli::parse().process().await? {
         return Ok(());
     }
+
+    Theme::override_color(&Config::load().colors);
 
     if !BpfAccess::is_available() {
         eprintln!("{}", BpfAccess::help_message());

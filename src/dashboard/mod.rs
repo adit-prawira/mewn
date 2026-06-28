@@ -9,7 +9,7 @@ use crate::packet::user_interface::PacketUserInterface;
 use crate::processes::resource::Process;
 use crate::processes::user_interface::ProcessUserInterface;
 use crate::terminal::Terminal;
-use crate::theme::{GREEN, TEXT_COLOR};
+use crate::theme::Theme;
 use crossterm::event::KeyCode;
 use ratatui::Frame;
 use ratatui::layout::Rect;
@@ -112,8 +112,8 @@ impl Dashboard {
 
         let tabs = Tabs::new(tab_titles)
             .select(selected)
-            .style(Style::default().fg(TEXT_COLOR))
-            .highlight_style(Style::default().fg(GREEN));
+            .style(Style::default().fg(Theme::text()))
+            .highlight_style(Style::default().fg(Theme::text_highlight()));
 
         let tab_area = Rect::new(area.x, area.y, area.width, 1);
         frame.render_widget(tabs, tab_area);

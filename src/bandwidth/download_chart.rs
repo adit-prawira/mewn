@@ -4,7 +4,7 @@ use ratatui::style::Style;
 use ratatui::symbols::Marker;
 use ratatui::widgets::{Axis, Block, BorderType, Borders, Chart, Dataset, GraphType};
 
-use crate::theme::{PRIMARY, TEXT_COLOR, TEXT_COLOR_DARKER, YELLOW};
+use crate::theme::Theme;
 use crate::utilities::bytes_format::BytesFormat;
 
 use super::resource::BandwidthStatistic;
@@ -19,7 +19,7 @@ impl DownloadChartComponent {
         let download_dataset = Dataset::default()
             .graph_type(GraphType::Area)
             .marker(Marker::Braille)
-            .style(Style::default().fg(YELLOW))
+            .style(Style::default().fg(Theme::download_rate()))
             .data(&download_points);
         let download_chart = Chart::new(vec![download_dataset])
             .block(
@@ -29,22 +29,22 @@ impl DownloadChartComponent {
                         statistic.download,
                         BytesFormat::format_bytes_per_seconds(download_max as f64)
                     ))
-                    .title_style(Style::default().fg(TEXT_COLOR))
+                    .title_style(Style::default().fg(Theme::text()))
                     .borders(Borders::ALL)
                     .border_type(BorderType::Rounded)
-                    .style(Style::default().fg(PRIMARY)),
+                    .style(Style::default().fg(Theme::border())),
             )
             .x_axis(
                 Axis::default()
                     .title("Seconds")
                     .bounds([0.0, download_points.len() as f64])
-                    .style(Style::default().fg(TEXT_COLOR_DARKER)),
+                    .style(Style::default().fg(Theme::text_dim())),
             )
             .y_axis(
                 Axis::default()
                     .title("Bytes/s")
                     .bounds([0.0, (download_max as f64).max(1.0)])
-                    .style(Style::default().fg(TEXT_COLOR_DARKER)),
+                    .style(Style::default().fg(Theme::text_dim())),
             );
 
         frame.render_widget(download_chart, area);
