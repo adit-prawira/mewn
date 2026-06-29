@@ -1,4 +1,5 @@
 use std::fs;
+use std::future::Future;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -7,40 +8,43 @@ use anyhow::{Ok, Result};
 use serde::Serialize;
 use tokio::time::interval;
 
-use crate::config::Config;
-
 use super::resource::ExportFormat;
 
 pub trait Exporter {
-    type Row: Serialize;
+    type Row: Serialize + Send;
 
-    async fn store_and_watch(&self) -> Arc<Mutex<Vec<Self::Row>>>;
+    fn store_and_watch(&self) -> impl Future<Output = Arc<Mutex<Vec<Self::Row>>>> + Send;
 
     fn csv_header() -> &'static str;
     fn csv_row(row: &Self::Row) -> String;
 
-    async fn export(&self, format: &ExportFormat, output: &Path) -> Result<()> {
-        let shared = self.store_and_watch().await;
-        let mut interval = interval(Duration::from_secs(Config::load().poll_interval));
-        interval.tick().await;
-        interval.tick().await;
+    fn export(&self, format: &ExportFormat, output: &Path) -> impl Future<Output = Result<()>> + Send
+    where
+        Self: Sync,
+    {
+        async move {
+            let shared = self.store_and_watch().await;
+            let mut interval = interval(Duration::from_secs(1));
+            interval.tick().await;
+            interval.tick().await;
 
-        let guard = shared.lock().unwrap();
-        match format {
-            ExportFormat::Json => {
-                let json = serde_json::to_string_pretty(&*guard)?;
-                fs::write(output, &json)?;
-            }
-            ExportFormat::Csv => {
-                let mut csv = String::from(Self::csv_header());
-                for row in guard.iter() {
-                    csv.push_str(&Self::csv_row(row));
-                    csv.push('\n');
+            let guard = shared.lock().unwrap();
+            match format {
+                ExportFormat::Json => {
+                    let json = serde_json::to_string_pretty(&*guard)?;
+                    fs::write(output, &json)?;
                 }
-                fs::write(output.with_extension("csv"), &csv)?;
+                ExportFormat::Csv => {
+                    let mut csv = String::from(Self::csv_header());
+                    for row in guard.iter() {
+                        csv.push_str(&Self::csv_row(row));
+                        csv.push('\n');
+                    }
+                    fs::write(output.with_extension("csv"), &csv)?;
+                }
             }
+            Ok(())
         }
-        Ok(())
     }
 }
 

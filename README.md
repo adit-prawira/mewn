@@ -56,10 +56,10 @@ sudo mewn teardown
 sudo mewn --teardown
 
 # Export data (2s capture, then write to file)
-mewn export connection --format json --output out.json
-mewn export bandwidth  -f csv -o out.csv
-mewn export packet     -f json -o out.json
-mewn export process    -f csv -o out.csv
+mewn export --domain connection --format json --output out.json
+mewn export -d bandwidth  -f csv -o out.csv
+mewn export -d packet     -f json -o out.json
+mewn export -d process    -f csv -o out.csv
 ```
 
 ### Export domains
