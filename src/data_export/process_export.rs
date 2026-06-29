@@ -48,11 +48,11 @@ impl ProcessExport {
         Ok(())
     }
 
-    pub(in crate::data_export) fn csv_header() -> &'static str {
+    pub(crate) fn csv_header() -> &'static str {
         "process,pid,connections,upload,download,cpu,ram\n"
     }
 
-    pub(in crate::data_export) fn csv_row(row: &Process) -> String {
+    pub(crate) fn csv_row(row: &Process) -> String {
         format!("{},{},{},{},{},{},{}", row.process, row.pid, row.connections, row.upload, row.download, row.cpu, row.ram)
     }
 }

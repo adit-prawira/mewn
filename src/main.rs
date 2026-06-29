@@ -76,6 +76,12 @@ async fn main() -> anyhow::Result<()> {
                 KeyCode::Char('q') | KeyCode::Char('Q') if !dashboard.is_capturing_keys() => return Ok(()),
                 KeyCode::Tab => dashboard.next_tab(),
                 KeyCode::BackTab => dashboard.previous_tab(),
+                KeyCode::Char('x') | KeyCode::Char('X') if !dashboard.is_capturing_keys() => {
+                    if let Err(err) = dashboard.export_current_tab() {
+                        dashboard.set_status_message(format!("Export error: {}", err));
+                    }
+                }
+                KeyCode::Char('e') | KeyCode::Char('E') if !dashboard.is_capturing_keys() => dashboard.toggle_export_format(),
                 _ => {
                     dashboard.handle_keys(key.code);
                 }
