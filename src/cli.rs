@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use anyhow::Result;
 use clap::{Parser, Subcommand, ValueEnum};
 
+use crate::config::Config;
 use crate::data_export::resource::ExportFormat;
 use crate::data_export::service::ExportService;
 use crate::permissions::setup::PermissionSetup;
@@ -26,6 +27,7 @@ enum Commands {
     Setup,
     Teardown,
     Version,
+    Init,
     Export {
         #[arg(long = "domain", short = 'd', value_enum)]
         domain: ExportDomain,
@@ -58,6 +60,10 @@ impl Cli {
             }
             Some(Commands::Teardown) => {
                 PermissionSetup::run_teardown()?;
+                Ok(true)
+            }
+            Some(Commands::Init) => {
+                Config::init()?;
                 Ok(true)
             }
             Some(Commands::Export { domain, format, output }) => {
@@ -106,6 +112,12 @@ mod tests {
     fn given_teardown_arg_then_parses_as_teardown_command() {
         let cli = Cli::parse_from(["mewn", "teardown"]);
         assert!(matches!(cli.command, Some(Commands::Teardown)));
+    }
+
+    #[test]
+    fn given_init_arg_then_parses_as_init_command() {
+        let cli = Cli::parse_from(["mewn", "init"]);
+        assert!(matches!(cli.command, Some(Commands::Init)));
     }
 
     #[test]

@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
+use anyhow::{Context, Result};
 use ratatui::style::Color;
 use serde::Deserialize;
 
@@ -102,6 +103,23 @@ impl Config {
             }
         }
     }
+
+    pub fn init() -> Result<()> {
+        let config_directory = Self::config_path().parent().unwrap().to_path_buf();
+        fs::create_dir_all(&config_directory).with_context(|| format!("failed to create config directory: {}", config_directory.display()))?;
+
+        let path = Self::config_path();
+        if path.exists() {
+            eprintln!("mewn: config already exists at {}", path.display());
+            return Ok(());
+        }
+
+        fs::write(&path, Self::template_content()).with_context(|| format!("failed to write config to {}", path.display()))?;
+
+        println!("mewn: created config at {}", path.display());
+        Ok(())
+    }
+
     fn config_path() -> PathBuf {
         let home = std::env::var("HOME").ok().map(PathBuf::from);
         home.unwrap_or_else(|| PathBuf::from(".")).join(".config").join("mewn").join("config.toml")
@@ -128,6 +146,39 @@ impl Config {
         let g = u8::from_str_radix(&hex[2..4], 16).map_err(serde::de::Error::custom)?;
         let b = u8::from_str_radix(&hex[4..6], 16).map_err(serde::de::Error::custom)?;
         Ok(Some(Color::Rgb(r, g, b)))
+    }
+
+    fn template_content() -> String {
+        r##"# ~/.config/mewn/config.toml — all keys optional, defaults shown
+            #
+            # poll_interval = 1           # seconds between data refreshes
+            # interface = "en0"           # network interface override
+
+            [colors]
+            # text = "#BAC4EE"
+            # text_highlight = "#FFFFFF"
+            # text_dim = "#6E7198"
+            # border = "#CBA6F7"
+            # indicator = "#F5C2E7"
+            # selected = "#94E2D5"
+            # highlight = "#A6E3A1"
+            # upload_rate = "#A6E3A1"
+            # download_rate = "#F9E2AF"
+            # tcp = "#A6E3A1"
+            # udp = "#89B4FA"
+            # udp_secondary = "#B4BEFE"
+            # dns = "#F9E2AF"
+            # icmp = "#F38BA8"
+            # cpu = "#89DCEB"
+            # ram = "#CBA6F7"
+            # warning = "#F9E2AF"
+            # source_address = "#F9E2AF"
+            # destination_address = "#E6A0C4"
+        "##
+        .lines()
+        .map(str::trim_start)
+        .collect::<Vec<_>>()
+        .join("\n")
     }
 }
 
@@ -173,8 +224,8 @@ mod tests {
     #[test]
     fn parses_poll_interval() {
         let toml = r#"
-poll_interval = 5
-"#;
+            poll_interval = 5
+            "#;
         let config: Config = toml::from_str(toml).unwrap();
         assert_eq!(config.poll_interval, 5);
         assert!(config.interface.is_none());
@@ -183,8 +234,8 @@ poll_interval = 5
     #[test]
     fn parses_interface() {
         let toml = r#"
-interface = "en0"
-"#;
+            interface = "en0"
+            "#;
         let config: Config = toml::from_str(toml).unwrap();
         assert_eq!(config.interface.as_deref(), Some("en0"));
         assert_eq!(config.poll_interval, 1);
@@ -193,12 +244,12 @@ interface = "en0"
     #[test]
     fn parses_semantic_colors() {
         let toml = r##"
-[colors]
-tcp = "#7CAA83"
-udp = "#89B4FA"
-dns = "#F0D9A8"
-icmp = "#F38BA8"
-"##;
+            [colors]
+            tcp = "#7CAA83"
+            udp = "#89B4FA"
+            dns = "#F0D9A8"
+            icmp = "#F38BA8"
+            "##;
         let config: Config = toml::from_str(toml).unwrap();
         assert_eq!(config.colors.tcp, Some(Color::Rgb(124, 170, 131)));
         assert_eq!(config.colors.udp, Some(Color::Rgb(137, 180, 250)));
@@ -219,11 +270,11 @@ icmp = "#F38BA8"
     #[test]
     fn partial_toml_merges_with_defaults() {
         let toml = r##"
-poll_interval = 3
+            poll_interval = 3
 
-[colors]
-tcp = "#7CAA83"
-"##;
+            [colors]
+            tcp = "#7CAA83"
+            "##;
         let config: Config = toml::from_str(toml).unwrap();
         assert_eq!(config.poll_interval, 3);
         assert_eq!(config.colors.tcp, Some(Color::Rgb(124, 170, 131)));
@@ -234,9 +285,9 @@ tcp = "#7CAA83"
     #[test]
     fn parses_hex_color_without_hash_prefix() {
         let toml = r##"
-[colors]
-tcp = "7CAA83"
-"##;
+            [colors]
+            tcp = "7CAA83"
+            "##;
         let config: Config = toml::from_str(toml).unwrap();
         assert_eq!(config.colors.tcp, Some(Color::Rgb(124, 170, 131)));
     }
@@ -244,9 +295,9 @@ tcp = "7CAA83"
     #[test]
     fn rejects_invalid_hex_chars() {
         let toml = r##"
-[colors]
-tcp = "#GGGGGG"
-"##;
+            [colors]
+            tcp = "#GGGGGG"
+            "##;
         let result = toml::from_str::<Config>(toml);
         assert!(result.is_err());
     }
@@ -254,15 +305,15 @@ tcp = "#GGGGGG"
     #[test]
     fn rejects_wrong_hex_length() {
         let toml_short = r##"
-[colors]
-tcp = "#7CAA"
-"##;
+            [colors]
+            tcp = "#7CAA"
+            "##;
         assert!(toml::from_str::<Config>(toml_short).is_err());
 
         let toml_long = r##"
-[colors]
-tcp = "#7CAA8300"
-"##;
+            [colors]
+            tcp = "#7CAA8300"
+            "##;
         assert!(toml::from_str::<Config>(toml_long).is_err());
     }
 }
