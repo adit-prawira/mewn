@@ -119,7 +119,8 @@ impl PacketStream {
                     .addresses
                     .iter()
                     .any(|address| if let IpAddr::V4(ipv4) = address.addr { !ipv4.is_link_local() } else { false });
-                if has_routable_ipv4 { 0 } else { 1 }
+                let connected = matches!(device.flags.connection_status, pcap::ConnectionStatus::Connected);
+                (if has_routable_ipv4 { 0 } else { 2 }, if connected { 0 } else { 1 })
             })
             .cloned()
     }
