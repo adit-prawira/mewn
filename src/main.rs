@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use clap::Parser;
 use crossterm::event::{self, Event, KeyCode};
@@ -62,7 +62,12 @@ async fn main() -> anyhow::Result<()> {
     terminal.clear_screen().expect("failed to clear screen");
 
     loop {
+        let frame_start = Instant::now();
         dashboard.render(&mut terminal);
+        let frame_ms = frame_start.elapsed().as_millis();
+        if frame_ms > 100 {
+            eprintln!("WARN: frame took {}ms", frame_ms);
+        }
 
         if event::poll(Duration::from_millis(50)).expect("poll failed")
             && let Ok(Event::Key(key)) = event::read()
