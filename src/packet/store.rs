@@ -6,6 +6,8 @@ use crate::config::Config;
 use super::resource::Packet;
 use super::stream::PacketStream;
 
+const MAX_PACKETS: usize = 10_000;
+
 pub struct PacketStore {
     shared_packets: Arc<Mutex<Vec<Packet>>>,
 }
@@ -28,7 +30,8 @@ impl PacketStore {
                 interval.tick().await;
                 let new_packets = tokio::task::spawn_blocking(PacketStream::get_packets).await.unwrap_or_default();
                 let mut packets_mutex = shared_packets.lock().unwrap();
-                *packets_mutex = new_packets;
+                packets_mutex.splice(0..0, new_packets);
+                packets_mutex.truncate(MAX_PACKETS);
             }
         });
 
@@ -61,5 +64,26 @@ mod tests {
         let original_ptr = Arc::as_ptr(&store.shared_packets);
         let shared = store.watch().await;
         assert_eq!(Arc::as_ptr(&shared), original_ptr, "watch must return the same allocation");
+    }
+
+    #[test]
+    fn given_packets_exceed_max_then_truncates_to_max() {
+        let dummy_packet = Packet {
+            timestamp: String::new(),
+            protocol: String::new(),
+            source: String::new(),
+            destination: String::new(),
+            size: String::new(),
+            source_port: 0,
+            destination_port: 0,
+            raw_size: 0,
+            dns_domain: None,
+        };
+        let overflow = vec![dummy_packet; MAX_PACKETS + 100];
+        let store = PacketStore {
+            shared_packets: Arc::new(Mutex::new(overflow)),
+        };
+        store.shared_packets.lock().unwrap().truncate(MAX_PACKETS);
+        assert_eq!(store.shared_packets.lock().unwrap().len(), MAX_PACKETS);
     }
 }
