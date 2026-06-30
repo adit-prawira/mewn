@@ -22,12 +22,16 @@ pub struct ProcessUserInterface {
     upload_rate_history: HashMap<u32, Vec<f64>>,
     download_rate_history: HashMap<u32, Vec<f64>>,
     last_push_at: Option<Instant>,
+
     table_component: TableComponent,
     search_bar_component: SearchBarComponent,
 }
 
 impl ProcessUserInterface {
     pub fn render(&mut self, frame: &mut Frame, area: Rect, processes: &[Process]) {
+        let config = Config::load();
+        let upload_limit = config.upload_threshold_mbps.map(|mb| mb * 125_000).unwrap_or(u64::MAX);
+        let download_limit = config.download_threshold_mbps.map(|mb| mb * 125_000).unwrap_or(u64::MAX);
         let is_wide = area.width > 100 && area.width as f32 / area.height.max(1) as f32 > 1.5;
         let alignment = if is_wide { Direction::Horizontal } else { Direction::Vertical };
         let [main_area, graph_area] = Layout::default()
@@ -82,7 +86,7 @@ impl ProcessUserInterface {
             self.last_push_at = Some(Instant::now());
         }
 
-        self.table_component.render(filtered_processes.clone(), frame, table_area);
+        self.table_component.render(filtered_processes.clone(), upload_limit, download_limit, frame, table_area);
         let Some(selected_process) = filtered_processes.get(self.table_component.get_selected_row()) else {
             return;
         };
