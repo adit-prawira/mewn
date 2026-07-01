@@ -169,6 +169,35 @@ sudo mewn teardown
 
 Install [Npcap](https://npcap.com), then run as Administrator. No CLI setup required.
 
+## GeoIP Lookup
+
+The Connections tab shows a country code (e.g. `US`, `DE`) for each remote IP.
+
+### Quick setup
+
+1. Create a free account at <https://lite.ip2location.com>
+2. Get your license key from the dashboard
+3. Run: `IP2LOCATION_LICENSE_KEY=your-key mewn geoip-update`
+4. Restart `mewn`
+
+### Manual setup (alternative)
+
+1. Download `IP2LOCATION-LITE-DB1.CSV.ZIP` from <https://lite.ip2location.com/database/ip-country>
+2. Unzip and place `IP2LOCATION-LITE-DB1.CSV` at `~/.config/mewn/IP2LOCATION-LITE-DB1.CSV`
+3. Restart `mewn`
+
+### Behavior when DB is missing
+
+- All rows show `-` in the Country column
+- Local/private IPs (e.g. `192.168.x.x`) also show `-`
+- IPv6 addresses not supported in DB1
+- Update frequency: monthly. Re-run `mewn geoip-update` to refresh.
+
+### Attribution
+
+This product includes IP2Location LITE data available from
+<https://lite.ip2location.com>.
+
 ## Development
 
 ### First-time setup

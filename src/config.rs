@@ -80,6 +80,9 @@ pub struct Config {
     pub interface: Option<String>,
 
     #[serde(default)]
+    pub ip2location_license_key: Option<String>,
+
+    #[serde(default)]
     pub colors: ColorConfig,
 }
 
@@ -90,12 +93,17 @@ impl Default for Config {
             upload_threshold_mbps: None,
             download_threshold_mbps: None,
             interface: None,
+            ip2location_license_key: None,
             colors: ColorConfig::default(),
         }
     }
 }
 
 impl Config {
+    pub fn directory() -> PathBuf {
+        Self::config_path().parent().map(PathBuf::from).unwrap_or_else(|| PathBuf::from("."))
+    }
+
     pub fn load() -> Self {
         let path = Self::config_path();
         let content = match fs::read_to_string(&path) {
@@ -163,6 +171,7 @@ impl Config {
             # upload_threshold_mbps = 10 # flash row red when upload exceeds N mbps 
             # download_threshold_mbps = 50 # flash row red when download exceeds N mbps
             # interface = "en0"           # network interface override
+            # ip2location_license_key = "" # free key from https://lite.ip2location.com (used by `mewn geoip-update`) 
 
             [colors]
             # text = "#BAC4EE"

@@ -1,6 +1,8 @@
 use std::fmt::Display;
 use std::process::Command;
 
+use crate::geoip::lookup::GeoIpLookup;
+
 use super::resource::Connection;
 
 #[allow(clippy::upper_case_acronyms)]
@@ -100,6 +102,13 @@ impl LsofStream {
         // e.g. TCP *:52532 (LISTEN)
         let socket_info = (parts[7..]).join(" ");
         let (protocol, local, remote, state) = Self::parse_socket_info(&socket_info)?;
+        let country = if remote.is_empty() {
+            None
+        } else {
+            let ip = GeoIpLookup::get_ip(&remote);
+            GeoIpLookup::get_country(ip)
+        };
+
         Some(Connection {
             pid: parsed_pid,
             process,
@@ -107,6 +116,7 @@ impl LsofStream {
             remote,
             state,
             protocol,
+            country,
         })
     }
 

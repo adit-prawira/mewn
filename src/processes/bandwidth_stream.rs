@@ -110,6 +110,7 @@ mod tests {
             remote: "".into(),
             state: "".into(),
             protocol: "TCP".into(),
+            country: None,
         }
     }
 

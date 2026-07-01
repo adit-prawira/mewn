@@ -38,7 +38,7 @@ impl TableComponent {
             self.scroll_offset = self.selected_row.saturating_sub(viewport.saturating_sub(1));
         }
 
-        let header_cells = ["", "", "PID", "Process", "Protocol", "Local", "Remote", "State", ""].iter().map(|header| {
+        let header_cells = ["", "", "PID", "Process", "Protocol", "Local", "Remote", "Country", "State", ""].iter().map(|header| {
             let style = Style::default().fg(Theme::text()).bold();
             Cell::from(*header).style(style)
         });
@@ -65,6 +65,7 @@ impl TableComponent {
                 }
                 _ => default_text_style,
             };
+            let country = connection.country.as_deref().unwrap_or("-");
 
             Row::new([
                 Cell::from(""),
@@ -74,6 +75,7 @@ impl TableComponent {
                 Cell::from(connection.protocol.to_string()).style(protocol_style),
                 Cell::from(connection.local.to_string()).style(Style::default().fg(Theme::source_address())),
                 Cell::from(connection.remote.to_string()).style(Style::default().fg(Theme::destination_address())),
+                Cell::from(country).style(Style::default().fg(Theme::text_dim())),
                 Cell::from(connection.state.to_string()).style(default_text_style),
                 Cell::from(""),
             ])
@@ -97,6 +99,7 @@ impl TableComponent {
                 Constraint::Length(15),
                 Constraint::Percentage(35),
                 Constraint::Percentage(35),
+                Constraint::Length(4),
                 Constraint::Length(12),
                 Constraint::Length(1),
             ],
