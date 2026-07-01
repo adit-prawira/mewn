@@ -71,6 +71,12 @@ pub struct Config {
     pub poll_interval: u64,
 
     #[serde(default)]
+    pub upload_threshold_mbps: Option<u64>,
+
+    #[serde(default)]
+    pub download_threshold_mbps: Option<u64>,
+
+    #[serde(default)]
     pub interface: Option<String>,
 
     #[serde(default)]
@@ -81,6 +87,8 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             poll_interval: 1,
+            upload_threshold_mbps: None,
+            download_threshold_mbps: None,
             interface: None,
             colors: ColorConfig::default(),
         }
@@ -152,6 +160,8 @@ impl Config {
         r##"# ~/.config/mewn/config.toml — all keys optional, defaults shown
             #
             # poll_interval = 1           # seconds between data refreshes
+            # upload_threshold_mbps = 10 # flash row red when upload exceeds N mbps 
+            # download_threshold_mbps = 50 # flash row red when download exceeds N mbps
             # interface = "en0"           # network interface override
 
             [colors]

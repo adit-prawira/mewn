@@ -180,7 +180,7 @@ impl TableComponent {
         }
     }
 
-    pub fn render(&mut self, processes: Vec<&Process>, frame: &mut Frame, area: Rect) {
+    pub fn render(&mut self, processes: Vec<&Process>, upload_limit: u64, download_limit: u64, frame: &mut Frame, area: Rect) {
         self.selected_row = self.selected_row.min(processes.len().saturating_sub(1));
         let viewport = (area.height as usize).saturating_sub(3).max(1);
 
@@ -202,8 +202,13 @@ impl TableComponent {
 
         let table_rows = processes.iter().enumerate().skip(self.scroll_offset).take(viewport).map(|(index, process)| {
             let is_selected = index == self.selected_row;
+            let should_alert = process.upload_rate > upload_limit || process.download_rate > download_limit;
             let selected_indicator = if is_selected { "▶".to_string() } else { String::from("") };
-            let style = if is_selected {
+            let warning_indicator = if should_alert { "[⚠️]".to_string() } else { String::from("") };
+            let indicator = format!("{}{}", selected_indicator, warning_indicator);
+            let cell_style = if should_alert {
+                Style::default().bg(Theme::warning()).fg(Theme::highlight())
+            } else if is_selected {
                 Style::default().fg(Theme::indicator()).bg(Theme::selected())
             } else {
                 Style::default().fg(Theme::indicator())
@@ -211,7 +216,7 @@ impl TableComponent {
 
             Row::new([
                 Cell::from(""),
-                Cell::from(selected_indicator).style(default_style_text),
+                Cell::from(indicator).style(default_style_text),
                 Cell::from(process.process.to_string()).style(default_style_text),
                 Cell::from(process.pid.to_string()).style(default_style_text),
                 Cell::from(process.connections.to_string()).style(default_style_text),
@@ -221,7 +226,7 @@ impl TableComponent {
                 Cell::from(process.ram.to_string()).style(Theme::ram()),
                 Cell::from(""),
             ])
-            .style(style)
+            .style(cell_style)
         });
 
         let (sort_mode_display, sort_type_display) = if self.auto_sort_on {
