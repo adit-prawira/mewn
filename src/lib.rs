@@ -6,6 +6,7 @@ pub mod config;
 pub mod connections;
 pub mod dashboard;
 pub mod data_export;
+pub mod geoip;
 pub mod packet;
 pub mod permissions;
 pub mod processes;

@@ -1,11 +1,12 @@
 use std::path::PathBuf;
 
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use clap::{Parser, Subcommand, ValueEnum};
 
 use crate::config::Config;
 use crate::data_export::resource::ExportFormat;
 use crate::data_export::service::ExportService;
+use crate::geoip::manager::GeoIpManager;
 use crate::permissions::setup::PermissionSetup;
 
 #[derive(ValueEnum, Clone)]
@@ -37,6 +38,11 @@ enum Commands {
 
         #[arg(long = "output", short = 'o')]
         output: PathBuf,
+    },
+    #[command(name = "geoip-update", about = "Download IP2Location LITE DB1 database for GeoIP lookups")]
+    GeoIpUpdate {
+        #[arg(long, env = "IP2LOCATION_LICENSE_KEY")]
+        license_key: Option<String>,
     },
 }
 
@@ -78,6 +84,15 @@ impl Cli {
                     ExportDomain::Bandwidth => service.bandwidth().await?,
                     ExportDomain::Process => service.process().await?,
                 }
+                Ok(true)
+            }
+            Some(Commands::GeoIpUpdate { license_key }) => {
+                let key = license_key
+                    .clone()
+                    .or_else(GeoIpManager::resolve_license_key)
+                    .ok_or_else(|| anyhow!("license key required: set IP2LOCATION_LICENSE_KEY env var or add ip2location_license_key to config.toml"))?;
+                let path = GeoIpManager::download_database(&key)?;
+                println!("mewn: GeoIP database downloaded to {}", path.display());
                 Ok(true)
             }
             None => Ok(false),

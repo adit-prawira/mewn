@@ -8,6 +8,8 @@ use mewn::cli::Cli;
 use mewn::config::Config;
 use mewn::connections::store::ConnectionStore;
 use mewn::dashboard::Dashboard;
+use mewn::geoip::database::GeoIpDatabase;
+use mewn::geoip::manager::GeoIpManager;
 use mewn::packet::store::PacketStore;
 use mewn::permissions::bpf::BpfAccess;
 use mewn::processes::store::ProcessStore;
@@ -24,6 +26,14 @@ async fn main() -> anyhow::Result<()> {
 
     if !BpfAccess::is_available() {
         eprintln!("{}", BpfAccess::help_message());
+    }
+
+    if GeoIpDatabase::load().is_none() {
+        if GeoIpManager::resolve_license_key().is_some() {
+            eprintln!("mewn: GeoIP DB missing - run 'mewn geoip-update' to download");
+        } else {
+            eprintln!("mewn: GeoIP DB not found. Get a free key at https://lite.ip2location.com and run 'mewn geoip-update'.");
+        }
     }
 
     let mut terminal = Terminal::init();

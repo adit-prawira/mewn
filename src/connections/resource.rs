@@ -8,4 +8,5 @@ pub struct Connection {
     pub remote: String,
     pub state: String,
     pub protocol: String,
+    pub country: Option<String>,
 }

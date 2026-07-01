@@ -36,6 +36,7 @@ impl ConnectionUserInterface {
                         || connection.local.to_lowercase().contains(&query)
                         || connection.remote.to_lowercase().contains(&query)
                         || connection.state.to_lowercase().contains(&query)
+                        || connection.country.as_deref().is_some_and(|country| country.to_lowercase().contains(&query))
                 })
                 .collect()
         };
