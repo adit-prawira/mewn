@@ -150,19 +150,7 @@ impl Dashboard {
         match self.current_tab {
             Tab::Connections => self.connection_ui.handle_keys(key_code),
             Tab::Bandwidth => self.bandwidth_ui.handle_keys(key_code),
-            Tab::Packet => match key_code {
-                KeyCode::Up => self.packet_ui.previous_row(),
-                KeyCode::Down => self.packet_ui.next_row(),
-                KeyCode::Char('t') => self.packet_ui.filter_by_tcp(),
-                KeyCode::Char('T') => self.packet_ui.filter_by_tcp(),
-                KeyCode::Char('u') => self.packet_ui.filter_by_udp(),
-                KeyCode::Char('U') => self.packet_ui.filter_by_udp(),
-                KeyCode::Char('i') => self.packet_ui.filter_by_icmp(),
-                KeyCode::Char('I') => self.packet_ui.filter_by_icmp(),
-                KeyCode::Char('a') => self.packet_ui.remove_filter(),
-                KeyCode::Char('A') => self.packet_ui.remove_filter(),
-                _ => {}
-            },
+            Tab::Packet => self.packet_ui.handle_keys(key_code),
             Tab::Process => self.process_ui.handle_keys(key_code),
         };
     }
