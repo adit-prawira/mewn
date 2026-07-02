@@ -120,11 +120,24 @@ impl PacketStream {
                     .iter()
                     .any(|address| if let IpAddr::V4(ipv4) = address.addr { !ipv4.is_link_local() } else { false });
                 let connected = matches!(device.flags.connection_status, pcap::ConnectionStatus::Connected);
-                (if has_routable_ipv4 { 0 } else { 2 }, if connected { 0 } else { 1 })
+                let interface_score = Self::interface_type_score(&device.name);
+                (if has_routable_ipv4 { 0 } else { 2 }, if connected { 0 } else { 1 }, interface_score)
             })
             .cloned()
     }
 
+    fn interface_type_score(name: &str) -> u8 {
+        match () {
+            _ if name.starts_with("en") => 0,
+            _ if name.starts_with("utun") => 2,
+            _ if name.starts_with("awdl") => 2,
+            _ if name.starts_with("llw") => 2,
+            _ if name.starts_with("pdp_ip") => 2,
+            _ if name.starts_with("gif") => 2,
+            _ if name.starts_with("stf") => 2,
+            _ => 1,
+        }
+    }
     fn parsed_dns_domain(packet_payload: &[u8]) -> Option<String> {
         if packet_payload.len() < 12 {
             return None;
