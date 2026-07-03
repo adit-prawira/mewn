@@ -11,3 +11,9 @@ pub struct BandwidthStatistic {
     pub download_rate: u64,
     pub total: String,
 }
+
+#[derive(Default)]
+pub struct TotalBytesTransferredEntry {
+    pub total_upload_bytes: u64,
+    pub total_download_bytes: u64,
+}

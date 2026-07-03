@@ -5,13 +5,13 @@ use crossterm::event::KeyCode;
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 
-use crate::atoms::search_bar::SearchBarComponent;
-use crate::config::Config;
-
 use super::download_chart::DownloadChartComponent;
-use super::resource::BandwidthStatistic;
+use super::resource::{BandwidthStatistic, TotalBytesTransferredEntry};
+use super::summary_table::SummaryTableComponent;
 use super::table::TableComponent;
 use super::upload_chart::UploadChartComponent;
+use crate::atoms::search_bar::SearchBarComponent;
+use crate::config::Config;
 
 #[derive(Default)]
 pub struct BandwidthUserInterface {
@@ -20,6 +20,8 @@ pub struct BandwidthUserInterface {
     last_push_at: Option<Instant>,
     search_bar_component: SearchBarComponent,
     table_component: TableComponent,
+    summary_table_component: SummaryTableComponent,
+    total_bytes_registry: HashMap<String, TotalBytesTransferredEntry>,
 }
 
 impl BandwidthUserInterface {
@@ -63,9 +65,28 @@ impl BandwidthUserInterface {
                 upload.push(statistics.upload_rate);
             }
             self.last_push_at = Some(Instant::now());
+
+            let poll_seconds = Config::load().poll_interval;
+            for statistic in bandwidth_statistics {
+                let entry = self.total_bytes_registry.entry(statistic.name.to_string()).or_default();
+                entry.total_upload_bytes += statistic.upload_rate * poll_seconds;
+                entry.total_download_bytes += statistic.download_rate * poll_seconds;
+            }
         }
 
-        self.table_component.render(filtered_bandwidth_statistics.clone(), frame, table_area);
+        if !self.total_bytes_registry.is_empty() {
+            let total_count = self.total_bytes_registry.len() as u16;
+            let [main_table_area, total_area] = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Fill(1), Constraint::Length(total_count)])
+                .areas::<2>(table_area);
+
+            self.table_component.render(filtered_bandwidth_statistics.clone(), frame, main_table_area);
+            self.summary_table_component
+                .render(filtered_bandwidth_statistics.clone(), &self.total_bytes_registry, frame, total_area);
+        } else {
+            self.table_component.render(filtered_bandwidth_statistics.clone(), frame, table_area);
+        }
 
         let Some(selected_statistic) = filtered_bandwidth_statistics.get(self.table_component.get_selected_row()) else {
             return;
