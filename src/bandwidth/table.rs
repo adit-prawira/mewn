@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use ratatui::Frame;
 use ratatui::layout::{Alignment, Constraint, Rect};
 use ratatui::style::Style;
@@ -15,7 +17,7 @@ pub struct TableComponent {
 }
 
 impl TableComponent {
-    pub fn render(&mut self, bandwidth_statistics: Vec<&BandwidthStatistic>, frame: &mut Frame, area: Rect) {
+    pub fn render(&mut self, bandwidth_statistics: &[&BandwidthStatistic], active_interface_names: &HashSet<String>, frame: &mut Frame, area: Rect) {
         self.selected_row = self.selected_row.min(bandwidth_statistics.len().saturating_sub(1));
         let viewport = (area.height as usize).saturating_sub(3).max(1);
 
@@ -27,7 +29,7 @@ impl TableComponent {
             self.scroll_offset = self.selected_row.saturating_sub(viewport.saturating_sub(1));
         }
 
-        let header_cells = ["", "", "Name", "Address", "Upload", "Download", "Total", "Maximum Transmission Unit", ""]
+        let header_cells = ["", "", "", "Name", "Address", "Upload", "Download", "Total", "Maximum Transmission Unit", ""]
             .iter()
             .map(|header| {
                 let style = Style::default().fg(Theme::text()).bold();
@@ -50,9 +52,18 @@ impl TableComponent {
                     Style::default().fg(Theme::indicator())
                 };
 
+                let is_active = active_interface_names.contains(&bandwidth_statistic.name);
+                let active_indicator = if is_active { "\u{25CF}" } else { "\u{25CB}" };
+                let active_indicator_style = if is_active {
+                    Style::default().fg(Theme::text_highlight())
+                } else {
+                    Style::default().fg(Theme::text_dim())
+                };
+
                 Row::new([
                     Cell::from(""),
                     Cell::from(selected_indicator).style(default_text_style),
+                    Cell::from(active_indicator).style(active_indicator_style),
                     Cell::from(bandwidth_statistic.name.to_string()).style(default_text_style),
                     Cell::from(bandwidth_statistic.address.to_string()).style(default_text_style),
                     Cell::from(bandwidth_statistic.upload.to_string()).style(Theme::upload_rate()),
@@ -73,6 +84,7 @@ impl TableComponent {
             table_rows,
             [
                 Constraint::Length(1),
+                Constraint::Length(2),
                 Constraint::Length(2),
                 Constraint::Length(10),
                 Constraint::Length(20),
