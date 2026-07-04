@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
 
 use crossterm::event::KeyCode;
@@ -22,6 +22,7 @@ pub struct BandwidthUserInterface {
     table_component: TableComponent,
     summary_table_component: SummaryTableComponent,
     total_bytes_registry: HashMap<String, TotalBytesTransferredEntry>,
+    last_active_interfaces: HashMap<String, Instant>,
 }
 
 impl BandwidthUserInterface {
@@ -72,7 +73,26 @@ impl BandwidthUserInterface {
                 entry.total_upload_bytes += statistic.upload_rate * poll_seconds;
                 entry.total_download_bytes += statistic.download_rate * poll_seconds;
             }
+
+            let now = Instant::now();
+            for statistic in bandwidth_statistics {
+                let is_active = statistic.upload_rate > 0 || statistic.download_rate > 0;
+                if !is_active {
+                    continue;
+                };
+                self.last_active_interfaces.insert(statistic.name.to_string(), now);
+            }
         }
+
+        let active_interface_names: HashSet<String> = bandwidth_statistics
+            .iter()
+            .filter(|statistic| {
+                self.last_active_interfaces
+                    .get(&statistic.name)
+                    .is_some_and(|last_active_at| last_active_at.elapsed() < Duration::from_secs(5))
+            })
+            .map(|statistic| statistic.name.to_string())
+            .collect();
 
         if !self.total_bytes_registry.is_empty() {
             let total_count = self.total_bytes_registry.len() as u16;
@@ -81,11 +101,11 @@ impl BandwidthUserInterface {
                 .constraints([Constraint::Fill(1), Constraint::Length(total_count)])
                 .areas::<2>(table_area);
 
-            self.table_component.render(filtered_bandwidth_statistics.clone(), frame, main_table_area);
+            self.table_component.render(&filtered_bandwidth_statistics, &active_interface_names, frame, main_table_area);
             self.summary_table_component
-                .render(filtered_bandwidth_statistics.clone(), &self.total_bytes_registry, frame, total_area);
+                .render(&filtered_bandwidth_statistics, &self.total_bytes_registry, frame, total_area);
         } else {
-            self.table_component.render(filtered_bandwidth_statistics.clone(), frame, table_area);
+            self.table_component.render(&filtered_bandwidth_statistics, &active_interface_names, frame, table_area);
         }
 
         let Some(selected_statistic) = filtered_bandwidth_statistics.get(self.table_component.get_selected_row()) else {

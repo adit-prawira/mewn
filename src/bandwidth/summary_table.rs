@@ -14,7 +14,7 @@ use super::resource::{BandwidthStatistic, TotalBytesTransferredEntry};
 pub struct SummaryTableComponent;
 
 impl SummaryTableComponent {
-    pub fn render(&self, bandwidth_statistics: Vec<&BandwidthStatistic>, total_bytes_registry: &HashMap<String, TotalBytesTransferredEntry>, frame: &mut Frame, area: Rect) {
+    pub fn render(&self, bandwidth_statistics: &[&BandwidthStatistic], total_bytes_registry: &HashMap<String, TotalBytesTransferredEntry>, frame: &mut Frame, area: Rect) {
         let header_cells = ["", "", "Name", "⬆ Total Upload (Bytes)", "⬇ Total Download (Bytes)", ""].iter().map(|header| {
             let style = Style::default().fg(Theme::text()).bold();
             Cell::from(*header).style(style)
