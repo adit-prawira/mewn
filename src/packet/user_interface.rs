@@ -25,11 +25,23 @@ pub struct PacketUserInterface {
     scroll_offset: usize,
     active_protocol_filter: Option<ProtocolFilter>,
     view_mode: ViewMode,
+    paused: bool,
+    paused_snapshot: Vec<Packet>,
 }
 
 impl PacketUserInterface {
     pub fn render(&mut self, frame: &mut Frame, area: Rect, packets: &[Packet]) {
-        let filtered_packets: Vec<&Packet> = packets.iter().filter(|packet| self.handle_filter(packet)).collect();
+        if self.paused && self.paused_snapshot.is_empty() {
+            self.paused_snapshot = packets.to_vec();
+        }
+
+        if !self.paused {
+            self.paused_snapshot.clear();
+        }
+
+        let effective_data: &[Packet] = if self.paused { &self.paused_snapshot } else { packets };
+
+        let filtered_packets: Vec<&Packet> = effective_data.iter().filter(|packet| self.handle_filter(packet)).collect();
 
         if filtered_packets.is_empty() && !BpfAccess::is_available() {
             let block = Block::default()
@@ -88,8 +100,13 @@ impl PacketUserInterface {
             KeyCode::Char('i') | KeyCode::Char('I') => self.filter_by_icmp(),
             KeyCode::Char('a') | KeyCode::Char('A') => self.remove_filter(),
             KeyCode::Char('d') | KeyCode::Char('D') => self.toggle_view_mode(),
+            KeyCode::Char(' ') => self.paused = !self.paused,
             _ => {}
         }
+    }
+
+    pub fn is_paused(&self) -> bool {
+        self.paused
     }
 
     fn next_row(&mut self) {

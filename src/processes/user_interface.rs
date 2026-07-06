@@ -25,6 +25,9 @@ pub struct ProcessUserInterface {
 
     table_component: TableComponent,
     search_bar_component: SearchBarComponent,
+
+    paused: bool,
+    paused_snapshot: Vec<Process>,
 }
 
 impl ProcessUserInterface {
@@ -48,7 +51,17 @@ impl ProcessUserInterface {
         let is_search_query_empty = search_query.is_empty();
 
         self.search_bar_component.render(frame, search_area);
-        let mut filtered_processes: Vec<&Process> = processes
+
+        if self.paused && self.paused_snapshot.is_empty() {
+            self.paused_snapshot = processes.to_vec();
+        }
+
+        if !self.paused {
+            self.paused_snapshot.clear();
+        }
+
+        let effective_data: &[Process] = if self.paused { &self.paused_snapshot } else { processes };
+        let mut filtered_processes: Vec<&Process> = effective_data
             .iter()
             .filter(|process| -> bool {
                 let mode_filter_result = self.table_component.filter_by_mode(process);
@@ -65,7 +78,7 @@ impl ProcessUserInterface {
 
         let should_push = self.last_push_at.is_none_or(|time| time.elapsed() >= Duration::from_secs(Config::load().poll_interval));
 
-        if should_push {
+        if should_push && !self.paused {
             for process in &filtered_processes {
                 let upload_rate = self.upload_rate_history.entry(process.pid).or_default();
                 upload_rate.truncate(59);
@@ -158,7 +171,12 @@ impl ProcessUserInterface {
             KeyCode::Char('u') | KeyCode::Char('U') => self.table_component.auto_sort_by_upload_rate(),
             KeyCode::Char('d') | KeyCode::Char('D') => self.table_component.auto_sort_by_download_rate(),
             KeyCode::Char('/') => self.search_bar_component.active(),
+            KeyCode::Char(' ') => self.paused = !self.paused,
             _ => {}
         }
+    }
+
+    pub fn is_paused(&self) -> bool {
+        self.paused
     }
 }

@@ -249,13 +249,17 @@ impl Dashboard {
     }
 
     fn render_tabs(&self, frame: &mut Frame, area: &Rect) {
-        let tab_titles = vec!["Processes", "Bandwidth", "Connections", "Packet"];
+        let mut tab_titles: Vec<String> = vec!["Processes".into(), "Bandwidth".into(), "Connections".into(), "Packet".into()];
         let selected = match self.current_tab {
             Tab::Process => 0,
             Tab::Bandwidth => 1,
             Tab::Connections => 2,
             Tab::Packet => 3,
         };
+
+        if self.current_tab_paused() {
+            tab_titles[selected].push_str(" [PAUSED]");
+        }
 
         let tabs = Tabs::new(tab_titles)
             .select(selected)
@@ -287,5 +291,14 @@ impl Dashboard {
                 self.process_ui.render(frame, content_area, &processes);
             }
         };
+    }
+
+    fn current_tab_paused(&self) -> bool {
+        match self.current_tab {
+            Tab::Connections => self.connection_ui.is_paused(),
+            Tab::Bandwidth => self.bandwidth_ui.is_paused(),
+            Tab::Packet => self.packet_ui.is_paused(),
+            Tab::Process => self.process_ui.is_paused(),
+        }
     }
 }
