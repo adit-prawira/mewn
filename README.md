@@ -11,11 +11,13 @@ A terminal-based network monitor with a cute cat mascot.
 - 📦 **Packet capture** with protocol parsing and DNS resolution
 - 🔍 **Process mapping** with per-process upload/download rates, CPU, RAM, and real-time charts
 - 🌍 **Cross-platform** permission setup (macOS, Linux, Windows)
+- 🌏 **Geo-IP lookup** with country codes on remote IPs
+- 🔎 **Search / filter** across all tabs
+- ⏯️ **Pause / resume** per tab to freeze live data
 
 ### Coming soon
 
 - 🖥️ Help screen with keybinding reference
-- ⚙️ Configurable via `~/.config/mewn/config.toml`
 
 ## Installation
 
@@ -55,6 +57,12 @@ sudo mewn --setup
 sudo mewn teardown
 sudo mewn --teardown
 
+# Generate config template at ~/.config/mewn/config.toml
+mewn init
+
+# Update GeoIP database (requires IP2Location license key)
+IP2LOCATION_LICENSE_KEY=your-key mewn geoip-update
+
 # Export data (2s capture, then write to file)
 mewn export --domain connection --format json --output out.json
 mewn export -d bandwidth  -f csv -o out.csv
@@ -87,18 +95,23 @@ mewn export -d process    -f csv -o out.csv
 | `q` / `Q` | Quit |
 | `Tab` | Next tab |
 | `Shift+Tab` | Previous tab |
+| `Space` | Pause / resume current tab |
+| `x` / `X` | Export current tab to `~/.mewn-exports/` |
+| `e` / `E` | Toggle export format (JSON ↔ CSV) |
 
 ### Connections tab
 
 | Key | Action |
 |-----|--------|
 | `↑` / `↓` | Scroll rows |
+| `/` | Search / filter connections |
 
 ### Bandwidth tab
 
 | Key | Action |
 |-----|--------|
 | `↑` / `↓` | Scroll rows |
+| `/` | Search / filter interfaces |
 
 ### Packets tab
 
@@ -109,12 +122,14 @@ mewn export -d process    -f csv -o out.csv
 | `u` / `U` | Filter UDP only |
 | `i` / `I` | Filter ICMP only |
 | `a` / `A` | Remove filter |
+| `d` / `D` | Toggle DNS query log view |
 
 ### Processes tab
 
 | Key | Action |
 |-----|--------|
 | `↑` / `↓` | Scroll rows |
+| `/` | Search / filter processes |
 | `f` / `F` | Toggle All ↔ Active (networked only) |
 | `n` / `N` | Sort by process name |
 | `p` / `P` | Sort by PID |
