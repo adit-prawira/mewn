@@ -23,6 +23,8 @@ pub struct BandwidthUserInterface {
     summary_table_component: SummaryTableComponent,
     total_bytes_registry: HashMap<String, TotalBytesTransferredEntry>,
     last_active_interfaces: HashMap<String, Instant>,
+    paused: bool,
+    paused_snapshot: Vec<BandwidthStatistic>,
 }
 
 impl BandwidthUserInterface {
@@ -30,6 +32,13 @@ impl BandwidthUserInterface {
         let is_wide = area.width > 100 && area.width as f32 / area.height.max(1) as f32 > 1.5;
         let alignment = if is_wide { Direction::Horizontal } else { Direction::Vertical };
 
+        if self.paused && self.paused_snapshot.is_empty() {
+            self.paused_snapshot = bandwidth_statistics.to_vec();
+        }
+        if !self.paused {
+            self.paused_snapshot.clear();
+        }
+        let effective_data: &[BandwidthStatistic] = if self.paused { &self.paused_snapshot } else { bandwidth_statistics };
         let [main_area, graph_area] = Layout::default()
             .direction(alignment)
             .constraints([Constraint::Fill(1), Constraint::Percentage(45)])
@@ -45,16 +54,16 @@ impl BandwidthUserInterface {
         self.search_bar_component.render(frame, search_area);
 
         let filtered_bandwidth_statistics: Vec<&BandwidthStatistic> = if is_search_query_empty {
-            bandwidth_statistics.iter().collect()
+            effective_data.iter().collect()
         } else {
-            bandwidth_statistics
+            effective_data
                 .iter()
                 .filter(|statistic| statistic.name.to_lowercase().contains(&search_query) || statistic.address.to_lowercase().contains(&search_query))
                 .collect()
         };
         let should_push = self.last_push_at.is_none_or(|time| time.elapsed() >= Duration::from_secs(Config::load().poll_interval));
 
-        if should_push {
+        if should_push && !self.paused {
             // updating ring buffer and track 60 seconds worth of history data
             for statistics in bandwidth_statistics {
                 let download = self.download_history.entry(statistics.name.to_string()).or_default();
@@ -151,11 +160,16 @@ impl BandwidthUserInterface {
             KeyCode::Up => self.table_component.previous_row(),
             KeyCode::Down => self.table_component.next_row(),
             KeyCode::Char('/') => self.search_bar_component.active(),
+            KeyCode::Char(' ') => self.paused = !self.paused,
             _ => {}
         }
     }
 
     pub fn is_searching(&self) -> bool {
         self.search_bar_component.is_active()
+    }
+
+    pub fn is_paused(&self) -> bool {
+        self.paused
     }
 }

@@ -11,6 +11,8 @@ use super::table::TableComponent;
 pub struct ConnectionUserInterface {
     search_bar_component: SearchBarComponent,
     table_component: TableComponent,
+    paused: bool,
+    paused_snapshot: Vec<Connection>,
 }
 
 impl ConnectionUserInterface {
@@ -19,15 +21,26 @@ impl ConnectionUserInterface {
             .direction(Direction::Vertical)
             .constraints([Constraint::Length(3), Constraint::Fill(1)])
             .areas::<2>(area);
+
+        if self.paused && self.paused_snapshot.is_empty() {
+            self.paused_snapshot = connections.to_vec();
+        }
+
+        if !self.paused {
+            self.paused_snapshot.clear();
+        }
+
+        let effective_data: &[Connection] = if self.paused { &self.paused_snapshot } else { connections };
+
         let search_query = self.search_bar_component.get_search_query();
 
         self.search_bar_component.render(frame, search_area);
 
         let filtered_connections: Vec<&Connection> = if search_query.is_empty() {
-            connections.iter().collect()
+            effective_data.iter().collect()
         } else {
             let query = search_query.to_lowercase();
-            connections
+            effective_data
                 .iter()
                 .filter(|connection| {
                     connection.process.to_lowercase().contains(&query)
@@ -76,11 +89,16 @@ impl ConnectionUserInterface {
             KeyCode::Up => self.table_component.previous_row(),
             KeyCode::Down => self.table_component.next_row(),
             KeyCode::Char('/') => self.search_bar_component.active(),
+            KeyCode::Char(' ') => self.paused = !self.paused,
             _ => {}
         }
     }
 
     pub fn is_searching(&self) -> bool {
         self.search_bar_component.is_active()
+    }
+
+    pub fn is_paused(&self) -> bool {
+        self.paused
     }
 }
