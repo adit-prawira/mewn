@@ -1,10 +1,10 @@
 use std::collections::HashSet;
 
 use ratatui::Frame;
-use ratatui::layout::{Alignment, Constraint, Rect};
+use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::style::Style;
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, BorderType, Borders, Cell, Padding, Row, Table};
+use ratatui::widgets::{Block, BorderType, Borders, Cell, Padding, Row, Scrollbar, ScrollbarOrientation, ScrollbarState, Table};
 
 use crate::theme::Theme;
 
@@ -98,7 +98,25 @@ impl TableComponent {
         .header(table_header)
         .block(content_block);
 
-        frame.render_widget(table, area);
+        if bandwidth_statistics.len() > viewport {
+            let [table_area, scrollbar_area] = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([Constraint::Fill(1), Constraint::Length(1)])
+                .areas::<2>(area);
+
+            let data_size = bandwidth_statistics.len();
+            let max_scrollable = data_size.saturating_sub(viewport).max(1);
+            let position = self.scroll_offset.saturating_mul(data_size.saturating_sub(1)) / max_scrollable;
+            let mut scrollbar_state = ScrollbarState::new(data_size).position(position);
+            let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+                .thumb_style(Style::default().fg(Theme::border()))
+                .track_style(Style::default().fg(Theme::text_dim()));
+
+            frame.render_widget(table, table_area);
+            frame.render_stateful_widget(scrollbar, scrollbar_area, &mut scrollbar_state);
+        } else {
+            frame.render_widget(table, area);
+        }
     }
 
     pub fn reset_selection(&mut self) {
