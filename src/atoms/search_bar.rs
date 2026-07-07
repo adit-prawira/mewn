@@ -70,3 +70,72 @@ impl SearchBarComponent {
         self.search_query.clear();
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn given_default_search_bar_when_checked_then_inactive_and_empty() {
+        let bar = SearchBarComponent::default();
+        assert!(!bar.is_active());
+        assert_eq!(bar.get_search_query(), "");
+    }
+
+    #[test]
+    fn given_inactive_bar_when_activated_then_becomes_active() {
+        let mut bar = SearchBarComponent::default();
+        bar.active();
+        assert!(bar.is_active());
+    }
+
+    #[test]
+    fn given_active_bar_when_deactivated_then_becomes_inactive() {
+        let mut bar = SearchBarComponent::default();
+        bar.active();
+        bar.inactive();
+        assert!(!bar.is_active());
+    }
+
+    #[test]
+    fn given_empty_query_when_char_added_then_query_appends() {
+        let mut bar = SearchBarComponent::default();
+        bar.add_search_char('a');
+        bar.add_search_char('b');
+        assert_eq!(bar.get_search_query(), "ab");
+    }
+
+    #[test]
+    fn given_non_empty_query_when_backspace_then_removes_last_char() {
+        let mut bar = SearchBarComponent::default();
+        bar.add_search_char('x');
+        bar.add_search_char('y');
+        bar.remove_search_char();
+        assert_eq!(bar.get_search_query(), "x");
+    }
+
+    #[test]
+    fn given_empty_query_when_backspace_then_remains_empty() {
+        let mut bar = SearchBarComponent::default();
+        bar.remove_search_char();
+        assert_eq!(bar.get_search_query(), "");
+    }
+
+    #[test]
+    fn given_non_empty_query_when_reset_then_query_cleared() {
+        let mut bar = SearchBarComponent::default();
+        bar.add_search_char('z');
+        bar.reset();
+        assert_eq!(bar.get_search_query(), "");
+    }
+
+    #[test]
+    fn given_reset_bar_when_active_unchanged_then_is_active_preserved() {
+        let mut bar = SearchBarComponent::default();
+        bar.active();
+        bar.add_search_char('x');
+        bar.reset();
+        assert!(bar.is_active());
+        assert_eq!(bar.get_search_query(), "");
+    }
+}

@@ -145,3 +145,23 @@ impl Theme {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn given_default_theme_when_info_called_then_returns_green() {
+        assert_eq!(Theme::info(), Color::Rgb(124, 170, 131));
+    }
+
+    #[test]
+    fn given_default_theme_when_warning_called_then_returns_gold() {
+        assert_eq!(Theme::warning(), Color::Rgb(240, 217, 168));
+    }
+
+    #[test]
+    fn given_default_theme_when_danger_called_then_returns_pink_red() {
+        assert_eq!(Theme::danger(), Color::Rgb(243, 139, 168));
+    }
+}

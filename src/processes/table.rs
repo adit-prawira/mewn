@@ -315,3 +315,154 @@ impl TableComponent {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::cmp::Ordering;
+
+    use super::*;
+    use crate::processes::resource::Process;
+
+    fn make_process(pid: u32, name: &str, connections: usize, cpu_percent: f64, ram_bytes: u64, upload_rate: u64, download_rate: u64) -> Process {
+        Process {
+            process: name.into(),
+            pid,
+            connections,
+            upload: String::new(),
+            upload_rate,
+            download: String::new(),
+            download_rate,
+            cpu: String::new(),
+            cpu_percent,
+            ram: String::new(),
+            ram_bytes,
+        }
+    }
+
+    #[test]
+    fn given_default_component_then_selected_row_is_zero() {
+        let component = TableComponent::default();
+        assert_eq!(component.get_selected_row(), 0);
+    }
+
+    #[test]
+    fn given_next_row_called_then_selected_row_increments() {
+        let mut component = TableComponent::default();
+        component.next_row();
+        assert_eq!(component.get_selected_row(), 1);
+    }
+
+    #[test]
+    fn given_previous_row_called_then_selected_row_decrements() {
+        let mut component = TableComponent::default();
+        component.next_row();
+        component.next_row();
+        component.previous_row();
+        assert_eq!(component.get_selected_row(), 1);
+    }
+
+    #[test]
+    fn given_previous_row_on_zero_then_does_not_underflow() {
+        let mut component = TableComponent::default();
+        component.previous_row();
+        assert_eq!(component.get_selected_row(), 0);
+    }
+
+    #[test]
+    fn given_reset_selection_called_then_row_is_zero() {
+        let mut component = TableComponent::default();
+        component.next_row();
+        component.next_row();
+        component.reset_selection();
+        assert_eq!(component.get_selected_row(), 0);
+    }
+
+    #[test]
+    fn given_default_filter_then_active_process_is_accepted() {
+        let component = TableComponent::default();
+        let process = make_process(100, "firefox", 5, 12.5, 45_000_000, 1_000_000, 500_000);
+        assert!(component.filter_by_mode(&process));
+    }
+
+    #[test]
+    fn given_active_filter_then_idle_process_is_rejected() {
+        let mut component = TableComponent::default();
+        component.toggle_filter_mode();
+        let process = make_process(100, "idle", 0, 0.0, 10_000_000, 0, 0);
+        assert!(!component.filter_by_mode(&process));
+    }
+
+    #[test]
+    fn given_active_filter_then_connected_process_is_accepted() {
+        let mut component = TableComponent::default();
+        component.toggle_filter_mode();
+        let process = make_process(100, "active", 3, 5.0, 20_000_000, 100_000, 200_000);
+        assert!(component.filter_by_mode(&process));
+    }
+
+    #[test]
+    fn given_sort_by_cpu_then_compare_orders_by_cpu_percent() {
+        let mut component = TableComponent::default();
+        component.sort_by_cpu();
+        let high = make_process(100, "a", 0, 80.0, 0, 0, 0);
+        let low = make_process(200, "b", 0, 20.0, 0, 0, 0);
+        assert_eq!(component.compare(&high, &low), Ordering::Less);
+    }
+
+    #[test]
+    fn given_sort_by_ram_then_compare_orders_by_ram_bytes() {
+        let mut component = TableComponent::default();
+        component.sort_by_ram();
+        let big = make_process(100, "a", 0, 0.0, 100_000_000, 0, 0);
+        let small = make_process(200, "b", 0, 0.0, 10_000_000, 0, 0);
+        assert_eq!(component.compare(&big, &small), Ordering::Less);
+    }
+
+    #[test]
+    fn given_sort_by_cpu_twice_then_compare_orders_ascending() {
+        let mut component = TableComponent::default();
+        component.sort_by_cpu();
+        component.sort_by_cpu();
+        let high = make_process(100, "a", 0, 80.0, 0, 0, 0);
+        let low = make_process(200, "b", 0, 20.0, 0, 0, 0);
+        assert_eq!(component.compare(&high, &low), Ordering::Greater);
+    }
+
+    #[test]
+    fn given_auto_sort_by_upload_then_compare_orders_by_upload_rate() {
+        let mut component = TableComponent::default();
+        component.toggle_auto_sort_on();
+        component.auto_sort_by_upload_rate();
+        let high = make_process(100, "a", 0, 0.0, 0, 5_000_000, 0);
+        let low = make_process(200, "b", 0, 0.0, 0, 1_000_000, 0);
+        assert_eq!(component.compare(&high, &low), Ordering::Greater);
+    }
+
+    #[test]
+    fn given_auto_sort_by_download_then_compare_orders_by_download_rate() {
+        let mut component = TableComponent::default();
+        component.toggle_auto_sort_on();
+        component.auto_sort_by_download_rate();
+        let high = make_process(100, "a", 0, 0.0, 0, 0, 5_000_000);
+        let low = make_process(200, "b", 0, 0.0, 0, 0, 1_000_000);
+        assert_eq!(component.compare(&high, &low), Ordering::Less);
+    }
+
+    #[test]
+    fn given_sort_by_connections_then_compare_orders_by_connection_count() {
+        let mut component = TableComponent::default();
+        component.sort_by_connections();
+        let many = make_process(100, "a", 10, 0.0, 0, 0, 0);
+        let few = make_process(200, "b", 2, 0.0, 0, 0, 0);
+        assert_eq!(component.compare(&many, &few), Ordering::Greater);
+    }
+
+    #[test]
+    fn given_sort_by_process_name_then_compare_orders_alphabetically() {
+        let mut component = TableComponent::default();
+        component.sort_by_process_name();
+        let before = make_process(100, "alacritty", 0, 0.0, 0, 0, 0);
+        let after = make_process(200, "firefox", 0, 0.0, 0, 0, 0);
+        assert_eq!(component.compare(&before, &after), Ordering::Greater);
+    }
+}
