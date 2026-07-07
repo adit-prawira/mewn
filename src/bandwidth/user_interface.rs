@@ -10,6 +10,7 @@ use super::resource::{BandwidthStatistic, TotalBytesTransferredEntry};
 use super::summary_table::SummaryTableComponent;
 use super::table::TableComponent;
 use super::upload_chart::UploadChartComponent;
+use super::utilisation_gauge::UtilisationGauge;
 use crate::atoms::search_bar::SearchBarComponent;
 use crate::config::Config;
 
@@ -25,6 +26,7 @@ pub struct BandwidthUserInterface {
     last_active_interfaces: HashMap<String, Instant>,
     paused: bool,
     paused_snapshot: Vec<BandwidthStatistic>,
+    peak_observed_rates: HashMap<String, u64>,
 }
 
 impl BandwidthUserInterface {
@@ -90,6 +92,9 @@ impl BandwidthUserInterface {
                     continue;
                 };
                 self.last_active_interfaces.insert(statistic.name.to_string(), now);
+                let total_rate = statistic.upload_rate + statistic.download_rate;
+                let peak = self.peak_observed_rates.entry(statistic.name.to_string()).or_default();
+                *peak = (*peak).max(total_rate);
             }
         }
 
@@ -121,14 +126,23 @@ impl BandwidthUserInterface {
             return;
         };
 
-        let [upload_area, download_area] = Layout::default()
+        let [gauge_area, upload_area, download_area] = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Fill(1), Constraint::Fill(1)])
-            .areas::<2>(graph_area);
+            .constraints([Constraint::Length(3), Constraint::Fill(1), Constraint::Fill(1)])
+            .areas::<3>(graph_area);
 
         let upload_data = self.upload_history.get(&selected_statistic.name).map(|datum| datum.as_slice()).unwrap_or(&[]);
         let download_data = self.download_history.get(&selected_statistic.name).map(|datum| datum.as_slice()).unwrap_or(&[]);
+        let capacity_bps = self.peak_observed_rates.get(&selected_statistic.name).copied().unwrap_or(0);
 
+        UtilisationGauge::render(
+            &selected_statistic.name,
+            selected_statistic.upload_rate,
+            selected_statistic.download_rate,
+            capacity_bps,
+            frame,
+            gauge_area,
+        );
         UploadChartComponent::render(upload_data, selected_statistic, frame, upload_area);
         DownloadChartComponent::render(download_data, selected_statistic, frame, download_area);
     }

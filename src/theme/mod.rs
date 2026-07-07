@@ -20,7 +20,11 @@ static DNS: OnceLock<Color> = OnceLock::new();
 static ICMP: OnceLock<Color> = OnceLock::new();
 static CPU: OnceLock<Color> = OnceLock::new();
 static RAM: OnceLock<Color> = OnceLock::new();
+
+static INFO: OnceLock<Color> = OnceLock::new();
 static WARNING: OnceLock<Color> = OnceLock::new();
+static DANGER: OnceLock<Color> = OnceLock::new();
+
 static SOURCE_ADDRESS: OnceLock<Color> = OnceLock::new();
 static DESTINATION_ADDRESS: OnceLock<Color> = OnceLock::new();
 
@@ -91,8 +95,16 @@ impl Theme {
         *RAM.get_or_init(|| Color::Magenta)
     }
 
+    pub fn info() -> Color {
+        *INFO.get_or_init(|| Color::Rgb(124, 170, 131))
+    }
+
     pub fn warning() -> Color {
         *WARNING.get_or_init(|| Color::Rgb(240, 217, 168))
+    }
+
+    pub fn danger() -> Color {
+        *DANGER.get_or_init(|| Color::Rgb(243, 139, 168))
     }
 
     pub fn source_address() -> Color {
@@ -118,7 +130,9 @@ impl Theme {
         Self::set_color(&UDP_SECONDARY, color_config.udp_secondary);
         Self::set_color(&DNS, color_config.dns);
         Self::set_color(&RAM, color_config.ram);
+        Self::set_color(&INFO, color_config.info);
         Self::set_color(&WARNING, color_config.warning);
+        Self::set_color(&DANGER, color_config.danger);
         Self::set_color(&ICMP, color_config.icmp);
         Self::set_color(&CPU, color_config.cpu);
         Self::set_color(&SOURCE_ADDRESS, color_config.source_address);

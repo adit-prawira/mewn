@@ -56,7 +56,13 @@ pub struct ColorConfig {
     pub ram: Option<Color>,
 
     #[serde(default, deserialize_with = "Config::deserialize_hex_color")]
+    pub info: Option<Color>,
+
+    #[serde(default, deserialize_with = "Config::deserialize_hex_color")]
     pub warning: Option<Color>,
+
+    #[serde(default, deserialize_with = "Config::deserialize_hex_color")]
+    pub danger: Option<Color>,
 
     #[serde(default, deserialize_with = "Config::deserialize_hex_color")]
     pub source_address: Option<Color>,
@@ -190,7 +196,9 @@ impl Config {
             # icmp = "#F38BA8"
             # cpu = "#89DCEB"
             # ram = "#CBA6F7"
+            # info = "#A6E3A1"
             # warning = "#F9E2AF"
+            # danger = "#F38BA8"
             # source_address = "#F9E2AF"
             # destination_address = "#E6A0C4"
         "##
@@ -235,7 +243,9 @@ mod tests {
         assert!(config.colors.icmp.is_none());
         assert!(config.colors.cpu.is_none());
         assert!(config.colors.ram.is_none());
+        assert!(config.colors.info.is_none());
         assert!(config.colors.warning.is_none());
+        assert!(config.colors.danger.is_none());
         assert!(config.colors.source_address.is_none());
         assert!(config.colors.destination_address.is_none());
     }
@@ -268,12 +278,16 @@ mod tests {
             udp = "#89B4FA"
             dns = "#F0D9A8"
             icmp = "#F38BA8"
+            info = "#7CAA83"
+            danger = "#F38BA8"
             "##;
         let config: Config = toml::from_str(toml).unwrap();
         assert_eq!(config.colors.tcp, Some(Color::Rgb(124, 170, 131)));
         assert_eq!(config.colors.udp, Some(Color::Rgb(137, 180, 250)));
         assert_eq!(config.colors.dns, Some(Color::Rgb(240, 217, 168)));
         assert_eq!(config.colors.icmp, Some(Color::Rgb(243, 139, 168)));
+        assert_eq!(config.colors.info, Some(Color::Rgb(124, 170, 131)));
+        assert_eq!(config.colors.danger, Some(Color::Rgb(243, 139, 168)));
         assert!(config.colors.text.is_none());
     }
 

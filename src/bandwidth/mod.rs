@@ -7,3 +7,4 @@ mod netstat_stream;
 mod summary_table;
 mod table;
 mod upload_chart;
+mod utilisation_gauge;
