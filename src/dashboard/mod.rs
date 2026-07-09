@@ -13,6 +13,7 @@ use crate::data_export::exporter::Exporter;
 use crate::data_export::packet_export::PacketExport;
 use crate::data_export::process_export::ProcessExport;
 use crate::data_export::resource::ExportFormat;
+use crate::molecules::help_modal::HelpModal;
 use crate::packet::resource::Packet;
 use crate::packet::user_interface::PacketUserInterface;
 use crate::processes::resource::Process;
@@ -51,6 +52,7 @@ pub struct Dashboard {
 
     current_export_format: ExportFormat,
     status_message: Option<(String, Instant)>,
+    help_modal_visible: bool,
 }
 
 impl Default for Dashboard {
@@ -71,6 +73,7 @@ impl Default for Dashboard {
 
             current_export_format: ExportFormat::Json,
             status_message: None,
+            help_modal_visible: false,
         }
     }
 }
@@ -121,6 +124,10 @@ impl Dashboard {
                     f.render_widget(notification, notification_area);
                 }
             }
+
+            if self.help_modal_visible {
+                HelpModal::render(f);
+            }
         });
     }
 
@@ -146,7 +153,17 @@ impl Dashboard {
         self.status_message = Some((message, Instant::now()));
     }
 
+    pub fn toggle_help_modal(&mut self) {
+        self.help_modal_visible = !self.help_modal_visible;
+    }
+
     pub fn handle_keys(&mut self, key_code: KeyCode) {
+        if self.help_modal_visible {
+            if matches!(key_code, KeyCode::Esc | KeyCode::Char('?')) {
+                self.help_modal_visible = false;
+            }
+            return;
+        }
         match self.current_tab {
             Tab::Connections => self.connection_ui.handle_keys(key_code),
             Tab::Bandwidth => self.bandwidth_ui.handle_keys(key_code),
@@ -156,6 +173,9 @@ impl Dashboard {
     }
 
     pub fn is_capturing_keys(&mut self) -> bool {
+        if self.help_modal_visible {
+            return true;
+        }
         match self.current_tab {
             Tab::Connections => self.connection_ui.is_searching(),
             Tab::Process => self.process_ui.is_searching(),
