@@ -6,10 +6,10 @@ class Mewn < Formula
   on_macos do
     if Hardware::CPU.arm?
       url "https://github.com/adit-prawira/mewn/releases/download/v0.1.0/mewn-v0.1.0-aarch64-apple-darwin.tar.gz"
-      sha256 "PLACEHOLDER_ARM64"
+      sha256 "ac9bf1fd7d992110c6a021aaa0876cbfbc2d217d057ebf03742dffcad7d35a87"
     else
       url "https://github.com/adit-prawira/mewn/releases/download/v0.1.0/mewn-v0.1.0-x86_64-apple-darwin.tar.gz"
-      sha256 "PLACEHOLDER_X86_64"
+      sha256 "b77073f5338e0ae5c010b5328f053c7d5abe2cd9d91d641d12ff2279d2b55d33"
     end
   end
 
