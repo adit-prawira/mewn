@@ -43,18 +43,14 @@ Artifacts attached to the release:
 - `mewn-v0.1.0-aarch64-apple-darwin.tar.gz` + `.sha256`
 - `mewn-v0.1.0-x86_64-apple-darwin.tar.gz` + `.sha256`
 
-## 6. Update formula SHA256
+## 6. Wait for formula auto-update
 
-The formula ships with `"PLACEHOLDER_ARM64"` and `"PLACEHOLDER_X86_64"` — these block installs until replaced.
+CI runs an `update-formula` job after publishing the release. It downloads the `.sha256` files, replaces `PLACEHOLDER_ARM64` and `PLACEHOLDER_X86_64` in `Formula/mewn.rb`, and pushes a commit to the release branch. No manual hash copying needed.
 
-1. Go to the GitHub Release page for `v0.1.0`
-2. Copy the SHA256 from each `.sha256` file
-3. Paste into `Formula/mewn.rb` replacing the placeholders
-4. Commit and push
+Once it finishes, verify the formula works:
 
 ```bash
-# Verify the formula
-brew tap adit-prawira/mewn
+brew tap adit-prawira/mewn https://github.com/adit-prawira/mewn
 brew install mewn
 mewn version
 ```

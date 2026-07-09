@@ -36,7 +36,7 @@ cargo install --path .
 ### Via Homebrew
 
 ```bash
-brew tap adit-prawira/mewn
+brew tap adit-prawira/mewn https://github.com/adit-prawira/mewn
 brew install mewn
 sudo mewn setup
 ```
