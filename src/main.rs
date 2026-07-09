@@ -92,6 +92,7 @@ async fn main() -> anyhow::Result<()> {
                     }
                 }
                 KeyCode::Char('e') | KeyCode::Char('E') if !dashboard.is_capturing_keys() => dashboard.toggle_export_format(),
+                KeyCode::Char('?') => dashboard.toggle_help_modal(),
                 _ => {
                     dashboard.handle_keys(key.code);
                 }

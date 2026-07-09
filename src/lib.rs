@@ -7,6 +7,7 @@ pub mod connections;
 pub mod dashboard;
 pub mod data_export;
 pub mod geoip;
+pub mod molecules;
 pub mod packet;
 pub mod permissions;
 pub mod processes;
