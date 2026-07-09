@@ -14,10 +14,7 @@ A terminal-based network monitor with a cute cat mascot.
 - 🌏 **Geo-IP lookup** with country codes on remote IPs
 - 🔎 **Search / filter** across all tabs
 - ⏯️ **Pause / resume** per tab to freeze live data
-
-### Coming soon
-
-- 🖥️ Help screen with keybinding reference
+- ❓ **Help modal** with keyboard shortcut reference
 
 ## Installation
 
@@ -98,6 +95,7 @@ mewn export -d process    -f csv -o out.csv
 | `Space` | Pause / resume current tab |
 | `x` / `X` | Export current tab to `~/.mewn-exports/` |
 | `e` / `E` | Toggle export format (JSON ↔ CSV) |
+| `?` | Toggle help modal (Esc to close) |
 
 ### Connections tab
 
@@ -139,6 +137,7 @@ mewn export -d process    -f csv -o out.csv
 | `s` / `S` | Toggle auto-sort on/off |
 | `u` / `U` | Auto-sort by upload rate |
 | `d` / `D` | Auto-sort by download rate |
+| `t` / `T` | Toggle CPU gauge (bar / number) |
 
 ## Permission Setup
 
