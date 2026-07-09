@@ -51,6 +51,7 @@ Once it finishes, verify the formula works:
 
 ```bash
 brew tap adit-prawira/mewn https://github.com/adit-prawira/mewn
+brew trust adit-prawira/mewn
 brew install mewn
 mewn version
 ```
