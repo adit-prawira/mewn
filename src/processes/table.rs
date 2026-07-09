@@ -5,6 +5,7 @@ use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::Style;
 use ratatui::widgets::{Block, BorderType, Borders, Cell, Padding, Row, Scrollbar, ScrollbarOrientation, ScrollbarState, Table};
 
+use crate::processes::cpu_gauge::CpuGauge;
 use crate::theme::Theme;
 
 use super::resource::Process;
@@ -89,6 +90,7 @@ pub struct TableComponent {
     auto_sort_type: AutoSortType,
     auto_sort_mode: SortMode,
     auto_sort_on: bool,
+    cpu_gauge_on: bool,
 }
 
 impl TableComponent {
@@ -214,6 +216,12 @@ impl TableComponent {
                 Style::default().fg(Theme::indicator())
             };
 
+            let cpu_content = if self.cpu_gauge_on {
+                CpuGauge::render(process.cpu_percent)
+            } else {
+                process.cpu.to_string()
+            };
+
             Row::new([
                 Cell::from(""),
                 Cell::from(indicator).style(default_style_text),
@@ -222,7 +230,7 @@ impl TableComponent {
                 Cell::from(process.connections.to_string()).style(default_style_text),
                 Cell::from(process.upload.to_string()).style(Style::default().fg(Theme::upload_rate())),
                 Cell::from(process.download.to_string()).style(Style::default().fg(Theme::download_rate())),
-                Cell::from(process.cpu.to_string()).style(Style::default().fg(Theme::cpu())),
+                Cell::from(cpu_content).style(Style::default().fg(Theme::cpu())),
                 Cell::from(process.ram.to_string()).style(Theme::ram()),
                 Cell::from(""),
             ])
@@ -259,7 +267,7 @@ impl TableComponent {
                 Constraint::Length(12),
                 Constraint::Length(14),
                 Constraint::Length(14),
-                Constraint::Length(8),
+                Constraint::Length(14),
                 Constraint::Length(12),
                 Constraint::Length(1),
             ],
@@ -286,6 +294,10 @@ impl TableComponent {
         } else {
             frame.render_widget(table, area);
         }
+    }
+
+    pub fn toggle_cpu_gauge(&mut self) {
+        self.cpu_gauge_on = !self.cpu_gauge_on;
     }
 
     fn toggle_auto_sort_mode(&mut self, auto_sort_type: AutoSortType, default_sort_mode: SortMode) {

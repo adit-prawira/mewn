@@ -170,6 +170,7 @@ impl ProcessUserInterface {
             KeyCode::Char('s') | KeyCode::Char('S') => self.table_component.toggle_auto_sort_on(),
             KeyCode::Char('u') | KeyCode::Char('U') => self.table_component.auto_sort_by_upload_rate(),
             KeyCode::Char('d') | KeyCode::Char('D') => self.table_component.auto_sort_by_download_rate(),
+            KeyCode::Char('t') | KeyCode::Char('T') => self.table_component.toggle_cpu_gauge(),
             KeyCode::Char('/') => self.search_bar_component.active(),
             KeyCode::Char(' ') => self.paused = !self.paused,
             _ => {}

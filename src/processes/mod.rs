@@ -4,6 +4,7 @@ pub mod user_interface;
 
 mod bandwidth_stream;
 mod cpu_chart;
+mod cpu_gauge;
 mod download_chart;
 mod ram_chart;
 mod sysinfo_stream;
