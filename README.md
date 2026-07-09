@@ -57,11 +57,9 @@ mewn --help
 
 # Setup packet capture permissions (requires sudo)
 sudo mewn setup
-sudo mewn --setup
 
 # Remove packet capture permissions (requires sudo)
 sudo mewn teardown
-sudo mewn --teardown
 
 # Generate config template at ~/.config/mewn/config.toml
 mewn init
