@@ -33,6 +33,14 @@ cargo install --path .
 # Binary lands in ~/.cargo/bin/mewn
 ```
 
+### Via Homebrew
+
+```bash
+brew tap adit-prawira/mewn
+brew install mewn
+sudo mewn setup
+```
+
 ## Usage
 
 ```bash
