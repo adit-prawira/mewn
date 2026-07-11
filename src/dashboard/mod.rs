@@ -21,7 +21,7 @@ use crate::processes::user_interface::ProcessUserInterface;
 use crate::terminal::Terminal;
 use crate::theme::Theme;
 use crate::utilities::serializer::Serializer;
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 use crossterm::event::KeyCode;
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
@@ -222,7 +222,10 @@ impl Dashboard {
     }
 
     fn handle_export_connections(&self, directory: PathBuf, timestamp: u64, file_extension: &str) -> Result<(&'static str, usize)> {
-        let data = self.shared_connections.lock().unwrap();
+        let data = self
+            .shared_connections
+            .lock()
+            .map_err(|poisoned_err| anyhow!("connections mutex poisoned: {}", poisoned_err))?;
         let path = directory.join(format!("connections_{}.{}", timestamp, file_extension));
         let content = match self.current_export_format {
             ExportFormat::Json => Serializer::json(&data),
@@ -233,7 +236,10 @@ impl Dashboard {
     }
 
     fn handle_export_bandwidths(&self, directory: PathBuf, timestamp: u64, file_extension: &str) -> Result<(&'static str, usize)> {
-        let data = self.shared_bandwidth_statistics.lock().unwrap();
+        let data = self
+            .shared_bandwidth_statistics
+            .lock()
+            .map_err(|poisoned_err| anyhow!("bandwidths mutex poisoned: {}", poisoned_err))?;
         let path = directory.join(format!("bandwidths_{}.{}", timestamp, file_extension));
         let content = match self.current_export_format {
             ExportFormat::Json => Serializer::json(&data),
@@ -245,7 +251,7 @@ impl Dashboard {
     }
 
     fn handle_export_packets(&self, directory: PathBuf, timestamp: u64, file_extension: &str) -> Result<(&'static str, usize)> {
-        let data = self.shared_packets.lock().unwrap();
+        let data = self.shared_packets.lock().map_err(|poisoned_err| anyhow!("packets mutex poisoned: {}", poisoned_err))?;
         let path = directory.join(format!("packets_{}.{}", timestamp, file_extension));
         let content = match self.current_export_format {
             ExportFormat::Json => Serializer::json(&data),
@@ -257,7 +263,7 @@ impl Dashboard {
     }
 
     fn handle_export_processes(&self, directory: PathBuf, timestamp: u64, file_extension: &str) -> Result<(&'static str, usize)> {
-        let data = self.shared_processes.lock().unwrap();
+        let data = self.shared_processes.lock().map_err(|poisoned_err| anyhow!("processes mutex poisoned: {}", poisoned_err))?;
         let path = directory.join(format!("processes_{}.{}", timestamp, file_extension));
         let content = match self.current_export_format {
             ExportFormat::Json => Serializer::json(&data),
@@ -320,5 +326,187 @@ impl Dashboard {
             Tab::Packet => self.packet_ui.is_paused(),
             Tab::Process => self.process_ui.is_paused(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+
+    fn poison_mutex<T: Send + 'static>(arc: &Arc<Mutex<Vec<T>>>) {
+        let arc = Arc::clone(arc);
+        let handle = std::thread::spawn(move || {
+            let _guard = arc.lock().unwrap();
+            panic!("intentional poison");
+        });
+        let _ = handle.join();
+    }
+
+    fn dummy_directory() -> PathBuf {
+        PathBuf::from("/tmp")
+    }
+
+    // --- poison tests ---
+
+    #[test]
+    fn given_poisoned_connections_mutex_then_export_returns_error() {
+        let dashboard = Dashboard::default();
+        poison_mutex(&dashboard.shared_connections);
+
+        let result = dashboard.handle_export_connections(dummy_directory(), 0, "json");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn given_poisoned_bandwidth_mutex_then_export_returns_error() {
+        let dashboard = Dashboard::default();
+        poison_mutex(&dashboard.shared_bandwidth_statistics);
+
+        let result = dashboard.handle_export_bandwidths(dummy_directory(), 0, "json");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn given_poisoned_packets_mutex_then_export_returns_error() {
+        let dashboard = Dashboard::default();
+        poison_mutex(&dashboard.shared_packets);
+
+        let result = dashboard.handle_export_packets(dummy_directory(), 0, "json");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn given_poisoned_processes_mutex_then_export_returns_error() {
+        let dashboard = Dashboard::default();
+        poison_mutex(&dashboard.shared_processes);
+
+        let result = dashboard.handle_export_processes(dummy_directory(), 0, "json");
+        assert!(result.is_err());
+    }
+
+    // --- happy-path tests ---
+
+    #[test]
+    fn given_healthy_connections_data_then_export_writes_json_file() {
+        let dashboard = Dashboard::default();
+        dashboard.shared_connections.lock().unwrap().push(Connection {
+            pid: 1,
+            process: "test".into(),
+            local: "127.0.0.1:80".into(),
+            remote: "10.0.0.1:443".into(),
+            state: "ESTABLISHED".into(),
+            protocol: "TCP".into(),
+            country: Some("US".into()),
+        });
+
+        let tempdir = tempfile::tempdir().unwrap();
+        let directory = tempdir.path().to_path_buf();
+        let result = dashboard.handle_export_connections(directory.clone(), 0, "json");
+        assert!(result.is_ok(), "export failed: {:?}", result.err());
+        let (tab_name, count) = result.unwrap();
+        assert_eq!(tab_name, "connections");
+        assert_eq!(count, 1);
+
+        let written_path = directory.join("connections_0.json");
+        assert!(written_path.exists(), "file not found at {:?}", written_path);
+        let content = std::fs::read_to_string(&written_path).unwrap();
+        assert!(!content.is_empty(), "file is empty");
+        assert!(content.contains("pid"), "content: {}", content);
+        assert!(content.contains("TCP"), "content: {}", content);
+    }
+
+    #[test]
+    fn given_healthy_bandwidth_data_then_export_writes_json_file() {
+        let dashboard = Dashboard::default();
+        dashboard.shared_bandwidth_statistics.lock().unwrap().push(BandwidthStatistic {
+            name: "en0".into(),
+            address: "10.0.0.1".into(),
+            maximum_transmission_unit: "1500".into(),
+            upload: "100B".into(),
+            upload_rate: 1_000,
+            download: "200B".into(),
+            download_rate: 2_000,
+            total: "300B".into(),
+        });
+
+        let tempdir = tempfile::tempdir().unwrap();
+        let directory = tempdir.path().to_path_buf();
+        let result = dashboard.handle_export_bandwidths(directory.clone(), 0, "json");
+        assert!(result.is_ok(), "export failed: {:?}", result.err());
+        let (tab_name, count) = result.unwrap();
+        assert_eq!(tab_name, "bandwidths");
+        assert_eq!(count, 1);
+
+        let written_path = directory.join("bandwidths_0.json");
+        assert!(written_path.exists(), "file not found at {:?}", written_path);
+        let content = std::fs::read_to_string(&written_path).unwrap();
+        assert!(!content.is_empty(), "file is empty");
+        assert!(content.contains("en0"), "content: {}", content);
+        assert!(content.contains("upload_rate"), "content: {}", content);
+    }
+
+    #[test]
+    fn given_healthy_packets_data_then_export_writes_json_file() {
+        let dashboard = Dashboard::default();
+        dashboard.shared_packets.lock().unwrap().push(Packet {
+            timestamp: "12:00:00".into(),
+            protocol: "TCP".into(),
+            source: "10.0.0.1".into(),
+            destination: "10.0.0.2".into(),
+            size: "100B".into(),
+            source_port: 12345,
+            destination_port: 443,
+            raw_size: 100,
+            dns_domain: None,
+        });
+
+        let tempdir = tempfile::tempdir().unwrap();
+        let directory = tempdir.path().to_path_buf();
+        let result = dashboard.handle_export_packets(directory.clone(), 0, "json");
+        assert!(result.is_ok(), "export failed: {:?}", result.err());
+        let (tab_name, count) = result.unwrap();
+        assert_eq!(tab_name, "packets");
+        assert_eq!(count, 1);
+
+        let written_path = directory.join("packets_0.json");
+        assert!(written_path.exists(), "file not found at {:?}", written_path);
+        let content = std::fs::read_to_string(&written_path).unwrap();
+        assert!(!content.is_empty(), "file is empty");
+        assert!(content.contains("TCP"), "content: {}", content);
+        assert!(content.contains("source_port"), "content: {}", content);
+    }
+
+    #[test]
+    fn given_healthy_processes_data_then_export_writes_json_file() {
+        let dashboard = Dashboard::default();
+        dashboard.shared_processes.lock().unwrap().push(Process {
+            process: "test".into(),
+            pid: 1,
+            connections: 1,
+            upload: "100B".into(),
+            upload_rate: 1_000,
+            download: "200B".into(),
+            download_rate: 2_000,
+            cpu: "5%".into(),
+            cpu_percent: 5.0,
+            ram: "10MB".into(),
+            ram_bytes: 10_000_000,
+        });
+
+        let tempdir = tempfile::tempdir().unwrap();
+        let directory = tempdir.path().to_path_buf();
+        let result = dashboard.handle_export_processes(directory.clone(), 0, "json");
+        assert!(result.is_ok(), "export failed: {:?}", result.err());
+        let (tab_name, count) = result.unwrap();
+        assert_eq!(tab_name, "processes");
+        assert_eq!(count, 1);
+
+        let written_path = directory.join("processes_0.json");
+        assert!(written_path.exists(), "file not found at {:?}", written_path);
+        let content = std::fs::read_to_string(&written_path).unwrap();
+        assert!(!content.is_empty(), "file is empty");
+        assert!(content.contains("test"), "content: {}", content);
+        assert!(content.contains("cpu_percent"), "content: {}", content);
     }
 }
