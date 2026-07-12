@@ -148,32 +148,55 @@ impl PacketStream {
         }
 
         let mut labels: Vec<&str> = Vec::new();
-        let mut offset = 12;
-
-        while offset < packet_payload.len() {
-            let size = packet_payload[offset] as usize;
-            if size == 0 {
-                break;
-            }
-
-            if size & 0xC0 == 0xC0 {
-                break;
-            }
-
-            offset += 1;
-            if offset + size > packet_payload.len() {
-                return None;
-            }
-
-            let label = std::str::from_utf8(&packet_payload[offset..offset + size]).ok()?;
-            labels.push(label);
-            offset += size;
-        }
+        let mut visited = Vec::new();
+        Self::resolve_dns_labels(packet_payload, 12, &mut labels, &mut visited)?;
 
         if labels.is_empty() {
             return None;
         }
         Some(labels.join("."))
+    }
+
+    fn resolve_dns_labels<'payload>(payload: &'payload [u8], start: usize, labels: &mut Vec<&'payload str>, visited: &mut Vec<usize>) -> Option<()> {
+        if visited.contains(&start) {
+            return None;
+        }
+
+        if start >= payload.len() {
+            return None;
+        }
+
+        visited.push(start);
+
+        let mut offset = start;
+        while offset < payload.len() {
+            let size = payload[offset] as usize;
+            if size == 0 {
+                break;
+            }
+
+            let is_compressed_pointer = size & 0xC0 == 0xC0;
+            if is_compressed_pointer {
+                if offset + 1 >= payload.len() {
+                    return None;
+                }
+
+                // Strip 0xC0 marker bits, merge with next byte to get the real offset
+                let pointer = ((size & 0x3F) << 8) | payload[offset + 1] as usize;
+                return Self::resolve_dns_labels(payload, pointer, labels, visited);
+            }
+
+            offset += 1;
+            if offset + size > payload.len() {
+                return None;
+            }
+
+            let label = std::str::from_utf8(&payload[offset..offset + size]).ok()?;
+            labels.push(label);
+            offset += size;
+        }
+
+        Some(())
     }
 }
 
@@ -240,7 +263,7 @@ mod tests {
     }
 
     #[test]
-    fn given_compressed_label_pointer_then_parsed_dns_domain_stops() {
+    fn given_compressed_label_pointer_then_resolves_full_domain() {
         let payload: &[u8] = &[
             0x12, 0x34, // Transaction ID
             0x01, 0x00, // Flags
@@ -248,13 +271,33 @@ mod tests {
             0x00, 0x00, // ANCOUNT
             0x00, 0x00, // NSCOUNT
             0x00, 0x00, // ARCOUNT
-            0x03, b'w', b'w', b'w', // "www"
-            0xc0, 0x0c, // Compressed pointer (0xC0 byte)
+            0x03, b'w', b'w', b'w', // "www"   (offset 12-15)
+            0xc0, 0x12, // pointer to offset 18 (0x12)
+            0x07, b'e', b'x', b'a', b'm', b'p', b'l', b'e', // "example" (offset 18-25)
+            0x03, b'c', b'o', b'm', // "com"    (offset 26-29)
+            0x00, // null     (offset 30)
             0x00, 0x01, // QTYPE
             0x00, 0x01, // QCLASS
         ];
-        // Parses "www" then hits compressed pointer and stops
         let domain = PacketStream::parsed_dns_domain(payload);
-        assert_eq!(domain, Some("www".to_string()));
+        assert_eq!(domain, Some("www.example.com".to_string()));
+    }
+
+    #[test]
+    fn given_pointer_cycle_then_returns_none() {
+        let payload: &[u8] = &[
+            0x12, 0x34, // Transaction ID
+            0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, b'w', b'w', b'w', // "www"   (offset 12-15)
+            0xc0, 0x0c, // pointer back to offset 12 (self)
+        ];
+        assert_eq!(PacketStream::parsed_dns_domain(payload), None);
+    }
+
+    #[test]
+    fn given_pointer_past_end_then_returns_none() {
+        let payload: &[u8] = &[
+            0x12, 0x34, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, b'w', b'w', b'w', 0xc0, 0xFF, // pointer to offset 63 — past end of buffer
+        ];
+        assert_eq!(PacketStream::parsed_dns_domain(payload), None);
     }
 }
