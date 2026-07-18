@@ -15,8 +15,8 @@ pub trait Exporter {
 
     fn store_and_watch(&self) -> impl Future<Output = Arc<Mutex<Vec<Self::Row>>>> + Send;
 
-    fn csv_header() -> &'static str;
-    fn csv_row(row: &Self::Row) -> String;
+    fn csv_headers() -> Vec<&'static str>;
+    fn csv_row_fields(row: &Self::Row) -> Vec<String>;
 
     fn export(&self, format: &ExportFormat, output: &Path) -> impl Future<Output = Result<()>> + Send
     where
@@ -35,12 +35,12 @@ pub trait Exporter {
                     fs::write(output, &json)?;
                 }
                 ExportFormat::Csv => {
-                    let mut csv = String::from(Self::csv_header());
-                    for row in guard.iter() {
-                        csv.push_str(&Self::csv_row(row));
-                        csv.push('\n');
+                    let mut writer = csv::Writer::from_writer(Vec::new());
+                    let _ = writer.write_record(Self::csv_headers());
+                    for datum in guard.iter() {
+                        let _ = writer.write_record(Self::csv_row_fields(datum));
                     }
-                    fs::write(output.with_extension("csv"), &csv)?;
+                    fs::write(output.with_extension("csv"), writer.into_inner().unwrap())?;
                 }
             }
             Ok(())
@@ -81,12 +81,12 @@ mod tests {
             Arc::clone(&self.data)
         }
 
-        fn csv_header() -> &'static str {
-            "name,count\n"
+        fn csv_headers() -> Vec<&'static str> {
+            vec!["name", "count"]
         }
 
-        fn csv_row(row: &TestRow) -> String {
-            format!("{},{}", row.name, row.count)
+        fn csv_row_fields(row: &TestRow) -> Vec<String> {
+            vec![row.name.clone(), row.count.to_string()]
         }
     }
 
