@@ -12,13 +12,21 @@ impl Exporter for ConnectionsExport {
         ConnectionStore::default().watch().await
     }
 
-    fn csv_header() -> &'static str {
-        "pid,process,local,remote,state,protocol,country\n"
+    fn csv_headers() -> Vec<&'static str> {
+        vec!["pid", "process", "local", "remote", "state", "protocol", "country"]
     }
 
-    fn csv_row(row: &Self::Row) -> String {
+    fn csv_row_fields(row: &Self::Row) -> Vec<String> {
         let country = row.country.as_deref().unwrap_or("-");
-        format!("{},{},{},{},{},{},{}", row.pid, row.process, row.local, row.remote, row.state, row.protocol, country)
+        vec![
+            row.pid.to_string(),
+            row.process.to_string(),
+            row.local.to_string(),
+            row.remote.to_string(),
+            row.state.to_string(),
+            row.protocol.to_string(),
+            country.to_string(),
+        ]
     }
 }
 
@@ -29,7 +37,7 @@ mod tests {
 
     #[test]
     fn csv_header_is_correct() {
-        assert_eq!(ConnectionsExport::csv_header(), "pid,process,local,remote,state,protocol,country\n");
+        assert_eq!(ConnectionsExport::csv_headers(), vec!["pid", "process", "local", "remote", "state", "protocol", "country"]);
     }
 
     #[test]
@@ -43,8 +51,7 @@ mod tests {
             protocol: "TCP".into(),
             country: None,
         };
-        let row = ConnectionsExport::csv_row(&c);
-        let fields: Vec<&str> = row.split(',').collect();
+        let fields = ConnectionsExport::csv_row_fields(&c);
         assert_eq!(fields.len(), 7, "csv row must match header column count");
     }
 
@@ -59,6 +66,28 @@ mod tests {
             protocol: "TCP".into(),
             country: Some("US".into()),
         };
-        assert_eq!(ConnectionsExport::csv_row(&c), "42,chrome,127.0.0.1:8080,142.250.80.46:443,ESTABLISHED,TCP,US");
+        assert_eq!(
+            ConnectionsExport::csv_row_fields(&c),
+            vec!["42", "chrome", "127.0.0.1:8080", "142.250.80.46:443", "ESTABLISHED", "TCP", "US"]
+        );
+    }
+
+    #[test]
+    fn given_process_field_with_comma_then_csv_writer_quotes_field() {
+        let c = Connection {
+            pid: 42,
+            process: "My App, Inc.".into(),
+            local: "127.0.0.1:8080".into(),
+            remote: "142.250.80.46:443".into(),
+            state: "ESTABLISHED".into(),
+            protocol: "TCP".into(),
+            country: Some("US".into()),
+        };
+        let fields = ConnectionsExport::csv_row_fields(&c);
+        assert_eq!(fields[1], "My App, Inc.");
+        let mut writer = csv::Writer::from_writer(Vec::new());
+        writer.write_record(&fields).unwrap();
+        let output = String::from_utf8(writer.into_inner().unwrap()).unwrap();
+        assert_eq!(output, "42,\"My App, Inc.\",127.0.0.1:8080,142.250.80.46:443,ESTABLISHED,TCP,US\n");
     }
 }

@@ -12,15 +12,20 @@ impl Exporter for PacketExport {
         PacketStore::default().watch().await
     }
 
-    fn csv_header() -> &'static str {
-        "timestamp,protocol,source,source_port,destination,destination_port,size\n"
+    fn csv_headers() -> Vec<&'static str> {
+        vec!["timestamp", "protocol", "source", "source_port", "destination", "destination_port", "size"]
     }
 
-    fn csv_row(row: &Self::Row) -> String {
-        format!(
-            "{},{},{},{},{},{},{}",
-            row.timestamp, row.protocol, row.source, row.source_port, row.destination, row.destination_port, row.size
-        )
+    fn csv_row_fields(row: &Self::Row) -> Vec<String> {
+        vec![
+            row.timestamp.to_string(),
+            row.protocol.to_string(),
+            row.source.to_string(),
+            row.source_port.to_string(),
+            row.destination.to_string(),
+            row.destination_port.to_string(),
+            row.size.to_string(),
+        ]
     }
 }
 
@@ -31,7 +36,10 @@ mod tests {
 
     #[test]
     fn csv_header_is_correct() {
-        assert_eq!(PacketExport::csv_header(), "timestamp,protocol,source,source_port,destination,destination_port,size\n");
+        assert_eq!(
+            PacketExport::csv_headers(),
+            vec!["timestamp", "protocol", "source", "source_port", "destination", "destination_port", "size"]
+        );
     }
 
     #[test]
@@ -47,8 +55,7 @@ mod tests {
             raw_size: 64,
             dns_domain: None,
         };
-        let row = PacketExport::csv_row(&p);
-        let fields: Vec<&str> = row.split(',').collect();
+        let fields = PacketExport::csv_row_fields(&p);
         assert_eq!(fields.len(), 7, "csv row must match header column count");
     }
 
@@ -65,6 +72,30 @@ mod tests {
             raw_size: 64,
             dns_domain: None,
         };
-        assert_eq!(PacketExport::csv_row(&p), "12:34:56,TCP,192.168.1.5,52532,142.250.80.46,443,64 B");
+        assert_eq!(
+            PacketExport::csv_row_fields(&p),
+            vec!["12:34:56", "TCP", "192.168.1.5", "52532", "142.250.80.46", "443", "64 B"]
+        );
+    }
+
+    #[test]
+    fn given_protocol_field_with_comma_then_csv_writer_quotes_field() {
+        let p = Packet {
+            timestamp: "12:34:56".into(),
+            protocol: "TCP,TLP".into(),
+            source: "192.168.1.5".into(),
+            source_port: 52532,
+            destination: "142.250.80.46".into(),
+            destination_port: 443,
+            size: "64 B".into(),
+            raw_size: 64,
+            dns_domain: None,
+        };
+        let fields = PacketExport::csv_row_fields(&p);
+        assert_eq!(fields[1], "TCP,TLP");
+        let mut writer = csv::Writer::from_writer(Vec::new());
+        writer.write_record(&fields).unwrap();
+        let output = String::from_utf8(writer.into_inner().unwrap()).unwrap();
+        assert_eq!(output, "12:34:56,\"TCP,TLP\",192.168.1.5,52532,142.250.80.46,443,64 B\n");
     }
 }

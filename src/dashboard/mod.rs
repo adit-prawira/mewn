@@ -229,7 +229,7 @@ impl Dashboard {
         let path = directory.join(format!("connections_{}.{}", timestamp, file_extension));
         let content = match self.current_export_format {
             ExportFormat::Json => Serializer::json(&data),
-            ExportFormat::Csv => Serializer::csv(&data, ConnectionsExport::csv_header(), ConnectionsExport::csv_row),
+            ExportFormat::Csv => Serializer::csv(&data, &ConnectionsExport::csv_headers(), ConnectionsExport::csv_row_fields),
         };
         fs::write(&path, content)?;
         Ok(("connections", data.len()))
@@ -243,7 +243,7 @@ impl Dashboard {
         let path = directory.join(format!("bandwidths_{}.{}", timestamp, file_extension));
         let content = match self.current_export_format {
             ExportFormat::Json => Serializer::json(&data),
-            ExportFormat::Csv => Serializer::csv(&data, BandwidthExport::csv_header(), BandwidthExport::csv_row),
+            ExportFormat::Csv => Serializer::csv(&data, &BandwidthExport::csv_headers(), BandwidthExport::csv_row_fields),
         };
 
         fs::write(&path, content)?;
@@ -255,7 +255,7 @@ impl Dashboard {
         let path = directory.join(format!("packets_{}.{}", timestamp, file_extension));
         let content = match self.current_export_format {
             ExportFormat::Json => Serializer::json(&data),
-            ExportFormat::Csv => Serializer::csv(&data, PacketExport::csv_header(), PacketExport::csv_row),
+            ExportFormat::Csv => Serializer::csv(&data, &PacketExport::csv_headers(), PacketExport::csv_row_fields),
         };
 
         fs::write(&path, content)?;
@@ -267,7 +267,7 @@ impl Dashboard {
         let path = directory.join(format!("processes_{}.{}", timestamp, file_extension));
         let content = match self.current_export_format {
             ExportFormat::Json => Serializer::json(&data),
-            ExportFormat::Csv => Serializer::csv(&data, ProcessExport::csv_header(), ProcessExport::csv_row),
+            ExportFormat::Csv => Serializer::csv(&data, &ProcessExport::csv_headers(), ProcessExport::csv_row_fields),
         };
 
         fs::write(&path, content)?;

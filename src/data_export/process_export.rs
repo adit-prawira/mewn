@@ -37,23 +37,31 @@ impl ProcessExport {
                 fs::write(output, &json)?;
             }
             ExportFormat::Csv => {
-                let mut csv = String::from(Self::csv_header());
-                for row in guard.iter() {
-                    csv.push_str(&Self::csv_row(row));
-                    csv.push('\n');
+                let mut writer = csv::Writer::from_writer(Vec::new());
+                let _ = writer.write_record(Self::csv_headers());
+                for datum in guard.iter() {
+                    let _ = writer.write_record(Self::csv_row_fields(datum));
                 }
-                fs::write(output.with_extension("csv"), &csv)?;
+                fs::write(output.with_extension("csv"), writer.into_inner().unwrap())?;
             }
         }
         Ok(())
     }
 
-    pub(crate) fn csv_header() -> &'static str {
-        "process,pid,connections,upload,download,cpu,ram\n"
+    pub(crate) fn csv_headers() -> Vec<&'static str> {
+        vec!["process", "pid", "connections", "upload", "download", "cpu", "ram"]
     }
 
-    pub(crate) fn csv_row(row: &Process) -> String {
-        format!("{},{},{},{},{},{},{}", row.process, row.pid, row.connections, row.upload, row.download, row.cpu, row.ram)
+    pub(crate) fn csv_row_fields(row: &Process) -> Vec<String> {
+        vec![
+            row.process.to_string(),
+            row.pid.to_string(),
+            row.connections.to_string(),
+            row.upload.to_string(),
+            row.download.to_string(),
+            row.cpu.to_string(),
+            row.ram.to_string(),
+        ]
     }
 }
 
@@ -63,7 +71,7 @@ mod tests {
 
     #[test]
     fn csv_header_is_correct() {
-        assert_eq!(ProcessExport::csv_header(), "process,pid,connections,upload,download,cpu,ram\n");
+        assert_eq!(ProcessExport::csv_headers(), vec!["process", "pid", "connections", "upload", "download", "cpu", "ram"]);
     }
 
     #[test]
@@ -81,8 +89,7 @@ mod tests {
             ram: "256 MB".into(),
             ram_bytes: 268_435_456,
         };
-        let row = ProcessExport::csv_row(&p);
-        let fields: Vec<&str> = row.split(',').collect();
+        let fields = ProcessExport::csv_row_fields(&p);
         assert_eq!(fields.len(), 7, "csv row must match header column count");
     }
 
@@ -101,7 +108,30 @@ mod tests {
             ram: "256 MB".into(),
             ram_bytes: 268_435_456,
         };
-        assert_eq!(ProcessExport::csv_row(&p), "chrome,1234,5,1.2 MB/s,5.4 MB/s,12.5%,256 MB");
+        assert_eq!(ProcessExport::csv_row_fields(&p), vec!["chrome", "1234", "5", "1.2 MB/s", "5.4 MB/s", "12.5%", "256 MB"]);
+    }
+
+    #[test]
+    fn given_process_name_with_comma_then_csv_writer_quotes_field() {
+        let p = Process {
+            process: "My App, Inc.".into(),
+            pid: 1234,
+            connections: 5,
+            upload: "1.2 MB/s".into(),
+            upload_rate: 1_200_000,
+            download: "5.4 MB/s".into(),
+            download_rate: 5_400_000,
+            cpu: "12.5%".into(),
+            cpu_percent: 12.5,
+            ram: "256 MB".into(),
+            ram_bytes: 268_435_456,
+        };
+        let fields = ProcessExport::csv_row_fields(&p);
+        assert_eq!(fields[0], "My App, Inc.");
+        let mut writer = csv::Writer::from_writer(Vec::new());
+        writer.write_record(&fields).unwrap();
+        let output = String::from_utf8(writer.into_inner().unwrap()).unwrap();
+        assert_eq!(output, "\"My App, Inc.\",1234,5,1.2 MB/s,5.4 MB/s,12.5%,256 MB\n");
     }
 
     #[test]
