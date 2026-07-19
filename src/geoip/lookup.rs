@@ -33,7 +33,12 @@ impl GeoIpLookup {
     }
 
     pub fn get_ip(endpoint: &str) -> &str {
-        endpoint.rsplit_once(':').map(|(ip, _)| ip).unwrap_or(endpoint)
+        let ip_without_port = endpoint.rsplit_once(":").map(|(ip, _)| ip).unwrap_or(endpoint);
+        if ip_without_port.starts_with("[") && ip_without_port.ends_with("]") {
+            &ip_without_port[1..ip_without_port.len() - 1]
+        } else {
+            ip_without_port
+        }
     }
 }
 
@@ -53,8 +58,16 @@ mod tests {
     }
 
     #[test]
-    fn given_ipv6_endpoint_then_get_ip_returns_bracketed() {
-        assert_eq!(GeoIpLookup::get_ip("[::1]:443"), "[::1]");
+    fn given_ipv6_endpoint_then_get_ip_strips_brackets() {
+        assert_eq!(GeoIpLookup::get_ip("[::1]:443"), "::1");
+        assert_eq!(GeoIpLookup::get_ip("[2001:db8::1]:80"), "2001:db8::1");
+    }
+
+    #[test]
+    fn given_ipv4_endpoint_then_get_ip_unaffected() {
+        assert_eq!(GeoIpLookup::get_ip("142.250.80.46:443"), "142.250.80.46");
+        assert_eq!(GeoIpLookup::get_ip("192.168.1.5:52532"), "192.168.1.5");
+        assert_eq!(GeoIpLookup::get_ip("8.8.8.8"), "8.8.8.8");
     }
 
     #[test]
